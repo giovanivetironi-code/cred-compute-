@@ -3,3 +3,4 @@ node_modules
 requests.json
 public/images/*.jpg
 .env
+render-deploy.sh
