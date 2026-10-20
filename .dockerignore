@@ -1,0 +1,5 @@
+node_modules
+*.log
+requests.json
+public/images/*.jpg
+.env

@@ -1,0 +1,100 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CRED · AI Compute Credits (Testnet)</title>
+<style>
+:root{--bg:#0b0d12;--card:#141823;--line:#262c3b;--txt:#e8ebf2;--mut:#98a1b5;--acc:#6ee7b7;--warn:#fbbf24}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5}
+.wrap{max-width:980px;margin:auto;padding:24px}
+.banner{background:var(--warn);color:#111;text-align:center;font-weight:600;padding:8px;font-size:14px}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
+.logo{font-weight:800;font-size:20px}.logo span{color:var(--acc)}
+h1{font-size:40px;margin:32px 0 8px}.lead{color:var(--mut);font-size:18px;max-width:680px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:28px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--mut);font-size:14px}
+button{background:var(--acc);color:#04130c;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}button.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+input,select{background:#0f121a;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px;font-size:15px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.stat{font-size:28px;font-weight:800}.mut{color:var(--mut);font-size:13px}
+.tag{display:inline-block;background:#3a2f0b;color:var(--warn);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700}
+.bar{height:8px;background:#0f121a;border-radius:6px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--acc)}
+.job{border-top:1px solid var(--line);padding:10px 0;font-size:14px}.job code{color:var(--acc);word-break:break-all}
+a{color:var(--acc)}#msg{min-height:20px;font-size:14px;color:var(--warn);margin-top:8px}
+footer{color:var(--mut);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:16px}
+</style></head><body>
+<div class="banner">TESTNET DEMO · Base Sepolia only · No real payments · CRED has no monetary value</div>
+<div class="wrap">
+<header><div class="logo">Compute<span>Credit</span> · CRED</div><button id="connect">Connect wallet</button></header>
+<h1>Prepaid credits for AI agent runs.</h1>
+<p class="lead">Buy CRED at a fixed price of <b>1 CRED = $1 of compute</b>, then spend it on AI services: chat, writing, research, coding, images, and a math lab. Each spend burns credits on-chain, and our backend runs your job.</p>
+<div class="grid">
+ <div class="card"><h3>⚡ Pay per run</h3><p>Spending burns your credits and records a run ID. That event triggers the job.</p></div>
+ <div class="card"><h3>🔒 Hard cap: 23,000,000</h3><p>No more than 23M CRED ($23M of compute) can ever be minted. Burned credits don't free up room to mint again.</p></div>
+ <div class="card"><h3>🚫 Non-transferable</h3><p>Credits can't be sent or traded. They're for buying compute, like a prepaid gift card.</p></div>
+ <div class="card"><h3>📄 Not an investment</h3><p>Fixed price: $1 per credit. No profit, yield, or price-increase promises.</p></div>
+</div>
+<div class="grid">
+ <div class="card"><div class="mut">Your balance</div><div class="stat" id="bal">-</div><div class="mut" id="addr">Not connected</div></div>
+ <div class="card"><div class="mut">Lifetime minted / cap</div><div class="stat" id="minted">-</div><div class="bar"><i id="capbar" style="width:0"></i></div><div class="mut">of 23,000,000 CRED</div></div>
+</div>
+<div class="grid">
+ <div class="card"><h3>Buy credits <span class="tag">TEST</span></h3><p>Demo only: free test credits, up to 10 per request (one request a minute). In production this step will be a fixed-price payment ($1 per CRED) via Stripe or USDC.</p>
+  <div class="row"><input id="amt" type="number" min="1" max="10" value="5" style="width:100px"><button id="buy" disabled>Get test credits</button></div></div>
+ <div class="card"><h3>Start an AI run</h3><p>Pick a service and type your prompt. Your wallet burns the credits, then the AI runs the job. <span class="mut" id="prov"></span></p>
+  <div class="row"><select id="run" style="width:100%"></select></div>
+  <textarea id="prompt" rows="4" placeholder="Your prompt…" style="width:100%;margin-top:10px;background:#0f121a;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px;font:inherit"></textarea>
+  <div class="row"><button id="start" disabled>Spend &amp; run</button></div></div>
+</div>
+<div id="msg"></div>
+<div class="card"><h3>Your runs</h3><div id="jobs" class="mut">Connect your wallet to see your runs.</div></div>
+<footer>Contract <a id="clink" target="_blank"></a> on Base Sepolia (84532) · Source verified on Sourcify · Testnet demo, not financial advice.</footer>
+</div>
+<script type="module">
+import { createPublicClient, createWalletClient, custom, http, parseAbi, formatUnits, parseUnits, stringToHex, baseSepolia } from '/viem.js';
+const cfg = await (await fetch('/api/config')).json(); const C = cfg.contract;
+const abi = parseAbi(['function balanceOf(address) view returns (uint256)','function totalMinted() view returns (uint256)','function spendCredits(uint256,bytes32)']);
+const pub = createPublicClient({ chain: baseSepolia, transport: http('https://sepolia.base.org') });
+const $ = id => document.getElementById(id); let user, wallet;
+$('clink').textContent = C; $('clink').href = 'https://sepolia.basescan.org/address/' + C;
+for (const [k, r] of Object.entries(cfg.runs)) $('run').add(new Option(`${r.label}: ${r.cost} CRED`, k));
+$('prov').textContent = cfg.provider === 'demo' ? '(Demo mode: AI provider not configured, responses are placeholders.)' : `(Powered by ${cfg.provider})`;
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('run').onchange = () => { $('prompt').style.display = cfg.runs[$('run').value].kind === 'math' ? 'none' : 'block'; };
+const msg = t => $('msg').innerHTML = t; const fmt = v => Number(formatUnits(v, 18)).toLocaleString();
+async function refresh() {
+  const m = await pub.readContract({ address: C, abi, functionName: 'totalMinted' });
+  $('minted').textContent = fmt(m); $('capbar').style.width = Math.max(0.5, Number(m * 10000n / (23000000n * 10n**18n)) / 100) + '%';
+  if (!user) return;
+  $('bal').textContent = fmt(await pub.readContract({ address: C, abi, functionName: 'balanceOf', args: [user] })) + ' CRED';
+  const jobs = await (await fetch('/api/jobs?user=' + user)).json();
+  $('jobs').innerHTML = jobs.length ? jobs.map(j => `<div class="job"><b>${j.label || j.runId}</b> · ${j.amount} CRED · <b>${j.status}</b> · <a target=_blank href="https://sepolia.basescan.org/tx/${j.txHash}">tx</a>
+   ${j.prompt ? `<div class="mut">“${esc(j.prompt)}”</div>` : ''}${!j.result ? '' : j.result.kind === 'math' ? `<div>${j.result.zeros.length} zeros in ${j.result.seconds}s on the critical line Re(s)=½ (mpmath). First: <code>${j.result.zeros.slice(0,5).join(', ')}…</code> Last: <code>${j.result.zeros.at(-1)}</code></div>`
+   : j.result.kind === 'image' ? `<div>${j.result.demo ? '<span class=tag>DEMO</span>' : ''}<br><img style="max-width:100%;border-radius:10px;margin-top:6px" src="${esc(j.result.url || ('data:image/png;base64,' + j.result.b64))}"></div>`
+   : `<div style="white-space:pre-wrap;background:#0f121a;border-radius:10px;padding:10px;margin-top:6px">${j.result.demo ? '<span class=tag>DEMO</span> ' : ''}${esc(j.result.text)}</div>`}${j.error ? `<div>${esc(j.error)}</div>` : ''}${j.refund ? `<div>↩️ Refund ${j.refund.amount} CRED: ${j.refund.status}${j.refund.txHash ? ` <a target=_blank href="https://sepolia.basescan.org/tx/${j.refund.txHash}">tx</a>` : ''}</div>` : ''}</div>`).join('') : 'No runs yet.';
+}
+$('connect').onclick = async () => {
+  if (!window.ethereum) return msg('No wallet found. Install MetaMask or another browser wallet.');
+  try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x14a34' }] }); }
+  catch (e) { if (e.code === 4902) await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x14a34', chainName: 'Base Sepolia', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://sepolia.base.org'], blockExplorerUrls: ['https://sepolia.basescan.org'] }] }); else return msg('Network switch rejected.'); }
+  wallet = createWalletClient({ chain: baseSepolia, transport: custom(ethereum) }); [user] = await wallet.requestAddresses();
+  $('addr').textContent = user; $('connect').textContent = user.slice(0,6) + '…' + user.slice(-4); $('buy').disabled = $('start').disabled = false; refresh();
+};
+$('buy').onclick = async () => {
+  $('buy').disabled = true; msg('Minting test credits…');
+  const r = await (await fetch('/api/test-mint', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ address: user, amount: Number($('amt').value) }) })).json();
+  msg(r.txHash ? `Minted. <a target=_blank href="https://sepolia.basescan.org/tx/${r.txHash}">View tx</a>` : r.error); $('buy').disabled = false; refresh();
+};
+$('start').onclick = async () => {
+  const k = $('run').value;
+  try {
+    const rq = await (await fetch('/api/requests', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: k, prompt: $('prompt').value, address: user }) })).json();
+    if (rq.error) return msg(rq.error);
+    const { runId, cost } = rq;
+    msg('Confirm in your wallet (you need a little Base Sepolia ETH for gas)…');
+    const hash = await wallet.writeContract({ account: user, address: C, abi, functionName: 'spendCredits', args: [parseUnits(String(cost), 18), stringToHex(runId, { size: 32 })] });
+    msg(`Spent ${cost} CRED, waiting for the job… <a target=_blank href="https://sepolia.basescan.org/tx/${hash}">tx</a>`);
+    await pub.waitForTransactionReceipt({ hash }); refresh();
+  } catch (e) { msg(e.shortMessage || 'Transaction failed'); }
+};
+refresh(); setInterval(refresh, 5000);
+</script></body></html>
