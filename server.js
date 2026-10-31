@@ -31,10 +31,17 @@ const account = privateKeyToAccount(key);
 const pub = createPublicClient({ chain: baseSepolia, transport: http(RPC) });
 const wallet = createWalletClient({ account, chain: baseSepolia, transport: http(RPC) });
 
-const app = express(); app.use(express.json()); app.set('trust proxy', true);
+const app = express(); app.use((req, res, next) => req.path === '/api/stripe/webhook' ? next() : express.json({ limit: '100kb' })(req, res, next)); app.set('trust proxy', true);
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/api/health', (_, res) => res.json({ ok: true, provider: getProvider().name, contract: CONTRACT }));
-app.get('/api/config', (_, res) => res.json({ contract: CONTRACT, chainId: 84532, maxMint: MAX_MINT, provider: getProvider().name, runs: Object.fromEntries(Object.entries(RUNS).map(([k, r]) => [k, { cost: r.cost, label: r.label, kind: r.kind, maxChars: r.maxChars }])) }));
+// Basic per-IP rate limiting for the API.
+const hits = new Map();
+function limit(max, windowMs) { return (req, res, next) => { const k = req.path + '|' + req.ip, now = Date.now(); let h = hits.get(k);
+  if (!h || now - h.t > windowMs) h = { t: now, n: 0 }; h.n++; hits.set(k, h);
+  if (h.n > max) return res.status(429).json({ error: 'Too many requests, slow down.' }); next(); }; }
+setInterval(() => { const now = Date.now(); for (const [k, h] of hits) if (now - h.t > 600_000) hits.delete(k); }, 300_000).unref();
+app.use('/api', limit(120, 60_000)); app.use('/api/requests', limit(10, 60_000)); app.use('/api/checkout', limit(5, 60_000));
+app.get('/api/health', (_, res) => res.json({ ok: true, provider: getProvider().name, contract: CONTRACT, db: db.backend(), lastBlock: stateMeta.lastBlock || null, stripe: !!process.env.STRIPE_SECRET_KEY }));
+app.get('/api/config', (_, res) => res.json({ stripe: !!process.env.STRIPE_SECRET_KEY, contract: CONTRACT, chainId: 84532, maxMint: MAX_MINT, provider: getProvider().name, runs: Object.fromEntries(Object.entries(RUNS).map(([k, r]) => [k, { cost: r.cost, label: r.label, kind: r.kind, maxChars: r.maxChars }])) }));
 
 const last = new Map(); let day = new Date().toDateString(), mintedToday = 0, queue = Promise.resolve();
 function ownerMint(to, amountStr, tag) {
@@ -61,15 +68,13 @@ app.post('/api/test-mint', async (req, res) => {
   try { res.json({ txHash: await p }); } catch (e) { mintedToday -= amount; console.error('mint failed:', e.shortMessage || 'error'); res.status(500).json({ error: e.shortMessage || 'mint failed' }); }
 });
 
-// Pending requests: created before the user spends; matched to CreditsSpent by runId. Persisted to disk.
-const PENDING_FILE = path.join(__dirname, 'requests.json');
-let store = fs.existsSync(PENDING_FILE) ? JSON.parse(fs.readFileSync(PENDING_FILE, 'utf8')) : {};
-if (!store.pending) store = { pending: store, processed: {} }; // migrate old flat format
-const pending = new Map(Object.entries(store.pending));
-const processed = store.processed; // txHash -> { runId, status, refund? }  (prevents re-running or double refunds after restart)
-const savePending = () => fs.writeFileSync(PENDING_FILE, JSON.stringify({ pending: Object.fromEntries(pending), processed }, null, 1));
+// Persistent state (Postgres via DATABASE_URL, file fallback): pending requests, processed txs, jobs, last scanned block.
+const db = require('./db');
+let pending = new Map(), processed = {}; const jobs = new Map(); let stateMeta = {};
+const persist = () => db.save({ pending: Object.fromEntries(pending), processed, jobs: [...jobs.values()].slice(-500), meta: stateMeta });
+const savePending = persist;
 app.post('/api/requests', (req, res) => {
-  const { service, prompt = '', address } = req.body || {}; const spec = RUNS[service];
+  const { service, address } = req.body || {}; const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : ''; const spec = RUNS[service];
   if (!spec) return res.status(400).json({ error: 'unknown service' });
   if (!isAddress(address)) return res.status(400).json({ error: 'bad address' });
   if (spec.kind !== 'math' && (!prompt.trim() || prompt.length > spec.maxChars)) return res.status(400).json({ error: `prompt required, max ${spec.maxChars} chars` });
@@ -78,7 +83,6 @@ app.post('/api/requests', (req, res) => {
   res.json({ runId, cost: spec.cost });
 });
 
-const jobs = new Map(); // txHash -> job (public view: no prompt for other users)
 // Refund: owner re-mints the burned amount to the spender. NOTE: this consumes lifetime cap (totalMinted).
 async function refund(job, reason) {
   job.refund = { reason, amount: job.amount, status: 'pending' };
@@ -95,6 +99,23 @@ async function runJob(job) {
   if (['rejected', 'failed'].includes(job.status)) await refund(job, job.error);
   else { processed[job.txHash] = { runId: job.runId, status: job.status }; savePending(); }
 }
+async function execute(type, prompt, runId) {
+  const spec = RUNS[type]; const job = { type, runId };
+    if (spec.kind === 'math') {
+      const out = await new Promise((ok, bad) => execFile('python3', [path.join(__dirname, 'zeros.py'), String(spec.n)], { timeout: 120_000 }, (e, o) => e ? bad(e) : ok(o)));
+      const r = JSON.parse(out); job.result = { kind: 'math', ...r };
+    } else {
+      const p = getProvider();
+      job.result = spec.kind === 'image' ? await p.image({ prompt: prompt, service: job.type })
+        : await p.text({ system: spec.system, prompt: prompt, maxTokens: spec.maxTokens, service: job.type });
+      job.provider = p.name;
+      if (job.result.kind === 'image' && !job.result.demo && (job.result.url || job.result.b64)) {
+        const buf = job.result.b64 ? Buffer.from(job.result.b64, 'base64') : Buffer.from(await (await fetch(job.result.url)).arrayBuffer());
+        const f = `images/${job.runId}.jpg`; fs.mkdirSync(path.join(__dirname, 'public', 'images'), { recursive: true }); fs.writeFileSync(path.join(__dirname, 'public', f), buf); job.result = { ...job.result, url: '/' + f, b64: undefined };
+      }
+    }
+  return { result: job.result, provider: job.provider };
+}
 async function runJobInner(job) {
   const req = pending.get(job.runId); const spec = RUNS[job.type];
   if (!req || !spec) { job.status = 'rejected'; job.error = 'no matching request for this runId'; return; }
@@ -103,46 +124,43 @@ async function runJobInner(job) {
   pending.delete(job.runId); savePending();
   job.status = 'running'; job.label = spec.label; job.prompt = req.prompt.slice(0, 300);
   try {
-    if (spec.kind === 'math') {
-      const out = await new Promise((ok, bad) => execFile('python3', [path.join(__dirname, 'zeros.py'), String(spec.n)], { timeout: 120_000 }, (e, o) => e ? bad(e) : ok(o)));
-      const r = JSON.parse(out); job.result = { kind: 'math', ...r };
-    } else {
-      const p = getProvider();
-      job.result = spec.kind === 'image' ? await p.image({ prompt: req.prompt, service: job.type })
-        : await p.text({ system: spec.system, prompt: req.prompt, maxTokens: spec.maxTokens, service: job.type });
-      job.provider = p.name;
-      if (job.result.kind === 'image' && !job.result.demo && (job.result.url || job.result.b64)) {
-        const buf = job.result.b64 ? Buffer.from(job.result.b64, 'base64') : Buffer.from(await (await fetch(job.result.url)).arrayBuffer());
-        const f = `images/${job.runId}.jpg`; fs.mkdirSync(path.join(__dirname, 'public', 'images'), { recursive: true }); fs.writeFileSync(path.join(__dirname, 'public', f), buf); job.result = { ...job.result, url: '/' + f, b64: undefined };
-      }
-    }
+    const out = await execute(job.type, req.prompt, job.runId); job.result = out.result; job.provider = out.provider;
     job.status = 'done';
   } catch (e) { job.status = 'failed'; job.error = String(e.message).slice(0, 200); console.error('job failed', job.runId, job.error); }
-  job.finishedAt = new Date().toISOString(); console.log('job', job.status, job.runId, job.txHash);
+  job.finishedAt = new Date().toISOString(); persist(); console.log('job', job.status, job.runId, job.txHash);
 }
 let fromBlock;
 async function poll() {
   try {
-    const head = await pub.getBlockNumber(); if (fromBlock === undefined) fromBlock = head - 150n;
+    const head = await pub.getBlockNumber();
+    if (fromBlock === undefined) { // resume after sleep/restart from last scanned block (max ~2 days back)
+      const saved = stateMeta.lastBlock ? BigInt(stateMeta.lastBlock) + 1n : head - 150n; const floor = head - 86_400n;
+      fromBlock = saved < floor ? floor : saved; console.log('scan resume from', String(fromBlock), 'head', String(head)); }
     while (head >= fromBlock) {
       const to = fromBlock + 199n < head ? fromBlock + 199n : head; // public RPC: 200-block getLogs limit
       const logs = await pub.getContractEvents({ address: CONTRACT, abi, eventName: 'CreditsSpent', fromBlock, toBlock: to });
       for (const l of logs) {
-        if (jobs.has(l.transactionHash)) continue;
+        if (jobs.has(l.transactionHash) || processed[l.transactionHash]) continue;
         const runId = hexToString(l.args.runId).replace(/\0+$/, '');
         const job = { txHash: l.transactionHash, user: l.args.user, amount: Number(formatUnits(l.args.amount, 18)), amountWei: l.args.amount.toString(), runId, type: runId.split('-')[0], status: 'queued', seenAt: new Date().toISOString() };
-        jobs.set(l.transactionHash, job); console.log('CreditsSpent', runId, job.amount, l.transactionHash); runJob(job);
+        jobs.set(l.transactionHash, job); persist(); console.log('CreditsSpent', runId, job.amount, l.transactionHash); runJob(job);
       }
-      fromBlock = to + 1n;
+      fromBlock = to + 1n; stateMeta.lastBlock = String(to); persist();
     }
   } catch (e) { console.error('poll error:', e.shortMessage || e.message); }
   setTimeout(poll, 4000);
 }
-poll();
+db.init().then(st => {
+  if (!st.pending && Object.keys(st).length) st = { pending: st };
+  pending = new Map(Object.entries(st.pending || {})); processed = st.processed || {}; stateMeta = st.meta || {};
+  for (const j of st.jobs || []) { if (['queued', 'running'].includes(j.status)) j.status = 'interrupted'; jobs.set(j.txHash, j); }
+  poll();
+}).catch(e => { console.error('db init failed, file fallback disabled:', e.message); process.exit(1); });
 app.get('/api/jobs', (req, res) => {
   const u = String(req.query.user || '').toLowerCase();
   res.json([...jobs.values()].filter(j => !u || j.user.toLowerCase() === u).reverse().slice(0, 20));
 });
 console.log('AI provider:', getProvider().name); // name only, never the key
+require('./accounts')(app, { RUNS, execute, db, limit });
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () => console.log(`CRED demo on :${PORT} (minter ${account.address})`));

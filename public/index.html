@@ -10,7 +10,7 @@
 <div class="banner">Testnet preview · Base Sepolia · No real payments · CRED has no monetary value</div>
 <nav class="nav"><div class="wrap navin">
  <a href="#top" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a>
- <div class="links" id="links"><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#how">How it works</a><a href="#transparency">Contract</a><a href="#faq">FAQ</a></div>
+ <div class="links" id="links"><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#how">How it works</a><a href="#transparency">Contract</a><a href="#faq">FAQ</a><a href="#account">Account</a></div>
  <button id="connect" class="btn">Connect wallet</button>
  <button class="burger" aria-label="Menu" onclick="document.getElementById('links').classList.toggle('open')">☰</button>
 </div></nav>
@@ -20,7 +20,7 @@
    <div class="pill"><i></i> Live on Base Sepolia testnet</div>
    <h1>Prepaid credits for <span class="grad">AI compute.</span></h1>
    <p class="lead">One credit, one dollar of compute. Use CRED to run AI chat, writing, research, coding, images and a math lab. Every run is paid on-chain, and failed runs refund automatically.</p>
-   <div class="ctas"><a href="#app" class="btn lg">Launch app →</a><a href="#how" class="btn ghost lg">How it works</a></div>
+   <div class="ctas"><a href="#account" class="btn lg">Get started →</a><a href="#how" class="btn ghost lg">How it works</a></div>
    <div class="kpis"><div><b>$1</b><span>per CRED</span></div><div><b>23M</b><span>hard cap</span></div><div><b>7</b><span>AI services</span></div></div>
   </div>
   <div class="preview">
@@ -43,7 +43,22 @@
   <div class="step"><b>02</b><h3>Spend on a run</h3><p>Your wallet burns the credits and records a run ID. Credits can't be transferred, so they work like a prepaid card.</p></div>
   <div class="step"><b>03</b><h3>Get your result</h3><p>Our backend sees the burn and runs the job, and the result appears here. If a run fails, the credits are refunded automatically.</p></div>
  </div></section>
-<section id="app" class="wrap sec"><div class="eyebrow">App</div><h2>Your dashboard</h2>
+<section id="account" class="wrap sec"><div class="eyebrow">Pay with card</div><h2>Your ComputeCred account</h2><p class="sub">Sign in with your email, buy a credit pack by card and run any AI service. No wallet needed.</p>
+ <div id="acct-off" class="panel" hidden><h3>Coming soon</h3><p class="mut" id="acct-off-msg">Card payments are being set up. In the meantime, you can use the wallet app below on testnet.</p></div>
+ <div id="acct-login" class="panel narrowp" hidden><h3>Sign in or create an account</h3><p class="mut">We'll email you a secure sign-in link. No password needed.</p>
+  <form id="loginf" class="row"><input id="email" type="email" required placeholder="you@company.com" aria-label="Email" style="flex:1;min-width:220px"><button class="btn" id="loginb">Email me a link</button></form><div id="loginmsg" class="mut" style="margin-top:10px"></div></div>
+ <div id="acct-in" hidden>
+  <div class="dash">
+   <div class="panel"><div class="mut">Signed in as <b id="aemail"></b> · <a href="#" id="logout">Sign out</a></div><div class="big" id="abal">—</div><div class="mut">credits · 1 credit = $1</div>
+    <div class="divider"></div><h3>Buy credits</h3><div class="packs" id="packs"></div><p class="mut" style="margin-top:10px">Secure checkout by Stripe. Credits are for AI services only and don't expire.</p></div>
+   <div class="panel wide"><h3>Run an AI service</h3><label class="lbl" for="arun">Service</label><select id="arun"></select>
+    <label class="lbl" for="aprompt" id="aplbl">Prompt</label><textarea id="aprompt" rows="5" placeholder="Ask anything…"></textarea>
+    <div class="row between"><span class="mut" id="acost"></span><button class="btn" id="astart">Run</button></div><div id="amsg" class="status" role="status"></div></div>
+  </div>
+  <div class="panel runs"><h3>History</h3><div id="ahist" class="mut">No runs yet.</div></div>
+ </div>
+</section>
+<section id="app" class="wrap sec"><div class="eyebrow">Wallet app · Testnet</div><h2>On-chain CRED dashboard</h2>
  <div class="dash">
   <div class="panel">
    <div class="stat"><div class="mut">Your balance</div><div class="big" id="bal">—</div><div class="mut mono" id="addr">Not connected</div></div>
@@ -81,7 +96,7 @@
 <footer class="foot"><div class="wrap footin">
  <div><a href="#top" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a><p class="mut">Prepaid credits for AI compute.</p></div>
  <div class="fl"><b>Product</b><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#app">App</a></div>
- <div class="fl"><b>Resources</b><a href="#transparency">Contract</a><a href="#faq">FAQ</a><a href="https://x.com" target="_blank" rel="noopener">X</a></div>
+ <div class="fl"><b>Resources</b><a href="#transparency">Contract</a><a href="#faq">FAQ</a><a href="https://x.com/moftahlmabry" target="_blank" rel="noopener">X (@moftahlmabry)</a></div>
  <div class="fl"><b>Legal</b><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a></div>
 </div><div class="wrap legal mut">© 2026 ComputeCred. Testnet demo running on Base Sepolia. CRED has no monetary value and is not an investment. This is not financial advice.</div></footer>
 <div id="toasts" aria-live="polite"></div>
@@ -138,4 +153,4 @@ $('start').onclick = async () => {
   } catch (e) { msg(e.shortMessage || 'Transaction failed','err'); }
 };
 refresh().catch(()=>{}); setInterval(()=>refresh().catch(()=>{}), 5000);
-</script></body></html>
+</script><script src="/account.js" defer></script></body></html>

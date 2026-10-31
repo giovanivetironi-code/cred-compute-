@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Admin · ComputeCred</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/style.css"></head><body>
+<main class="wrap doc" style="max-width:1000px"><div class="eyebrow">Admin</div><h1>Revenue</h1>
+<form id="f" class="row"><input id="tok" type="password" placeholder="Admin token" style="flex:1"><select id="mode" style="width:140px"><option value="live">Live</option><option value="test">Test mode</option></select><button class="btn">Load</button></form>
+<div id="out" style="margin-top:24px"></div></main>
+<script>
+const $=id=>document.getElementById(id);$('tok').value=sessionStorage.adm||'';
+$('f').onsubmit=async e=>{e.preventDefault();sessionStorage.adm=$('tok').value;
+const r=await fetch('/api/admin/stats?mode='+$('mode').value,{headers:{'x-admin-token':$('tok').value}});const d=await r.json();
+if(!r.ok)return $('out').textContent=d.error||'error';if(d.accounts===false)return $('out').textContent='Accounts disabled (no database).';
+const c=(l,v)=>`<div class="card"><div class="mut">${l}</div><div class="big">${v}</div></div>`;const $$=n=>'$'+Number(n).toFixed(2);
+$('out').innerHTML=`<div class="cards">${c('Revenue',$$(d.revenue_usd))+c('Purchases',d.purchases)+c('Users',d.users)+c('Credits spent',$$(d.credits_spent))+c('Est. AI cost',$$(d.est_provider_cost_usd))+c('Est. gross margin',$$(d.est_gross_margin_usd))+c('Outstanding credits',$$(d.outstanding_credits))}</div>
+<h3 style="margin-top:28px">Runs by service</h3><div class="table"><table><tr><th>Service</th><th>Status</th><th class=r>Runs</th><th class=r>Credits</th><th class=r>Est. cost</th></tr>${d.byService.map(r=>`<tr><td>${r.service}</td><td>${r.status}</td><td class=r>${r.n}</td><td class=r>${(r.cents/100).toFixed(2)}</td><td class=r>${$$(r.est_cost_usd)}</td></tr>`).join('')}</table></div>
+<h3 style="margin-top:28px">Recent purchases</h3><div class="table"><table><tr><th>Date</th><th>Email</th><th class=r>USD</th><th>Mode</th></tr>${d.recentPurchases.map(p=>`<tr><td>${new Date(p.created_at).toLocaleString()}</td><td>${p.email.replace(/[<>&]/g,'')}</td><td class=r>$${p.usd}</td><td>${p.live==='true'?'live':'test'}</td></tr>`).join('')}</table></div>`;};
+</script></body></html>
