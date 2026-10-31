@@ -124,6 +124,15 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
     res.json({ received: true });
   }));
 
+  const isAdmin = req => { const want = process.env.ADMIN_TOKEN || '', got = String(req.headers['x-admin-token'] || ''); return want && got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want)); };
+  // Admin-only: create a login session for an email (support/testing; works without email provider).
+  app.post('/api/admin/session', wrap(async (req, res) => {
+    if (!isAdmin(req)) return res.status(401).json({ error: 'unauthorized' }); if (!enabled()) return res.status(503).json({ error: 'no db' });
+    const email = String(req.body?.email || '').trim().toLowerCase(); if (!email.includes('@')) return res.status(400).json({ error: 'email' });
+    const u = (await q('INSERT INTO users (email) VALUES ($1) ON CONFLICT (email) DO UPDATE SET email=EXCLUDED.email RETURNING id', [email])).rows[0];
+    const s = crypto.randomBytes(32).toString('base64url'); await q("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1,$2, now() + interval '1 day')", [sha(s), u.id]);
+    res.json({ userId: u.id, session: s });
+  }));
   // Admin revenue view: header x-admin-token must equal ADMIN_TOKEN.
   app.get('/api/admin/stats', wrap(async (req, res) => {
     const want = process.env.ADMIN_TOKEN || '', got = String(req.headers['x-admin-token'] || '');
