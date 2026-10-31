@@ -1,12 +1,17 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CRED · AI Compute Credits (Testnet)</title>
+<title>ComputeCred · AI Compute Credits (Testnet)</title>
+<meta name="description" content="ComputeCred: prepaid CRED credits for AI agent runs. 1 CRED = $1 of compute. Testnet demo.">
+<meta name="theme-color" content="#0b0d12">
+<meta property="og:title" content="ComputeCred · AI Compute Credits"><meta property="og:description" content="Prepaid CRED credits for AI agent runs: chat, writing, research, coding, images. 1 CRED = $1 of compute.">
+<meta property="og:image" content="/images/icon-512.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary">
+<link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" type="image/png" href="/images/icon-32.png"><link rel="apple-touch-icon" href="/images/icon-180.png">
 <style>
-:root{--bg:#0b0d12;--card:#141823;--line:#262c3b;--txt:#e8ebf2;--mut:#98a1b5;--acc:#6ee7b7;--warn:#fbbf24}
+:root{--bg:#0b0d12;--card:#141823;--line:#262c3b;--txt:#e8ebf2;--mut:#98a1b5;--acc:#70f731;--warn:#fbbf24}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5}
 .wrap{max-width:980px;margin:auto;padding:24px}
 .banner{background:var(--warn);color:#111;text-align:center;font-weight:600;padding:8px;font-size:14px}
 header{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
-.logo{font-weight:800;font-size:20px}.logo span{color:var(--acc)}
+.logo{font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px}.logo img{width:36px;height:36px;border-radius:9px}.logo span{color:var(--acc)}
 h1{font-size:40px;margin:32px 0 8px}.lead{color:var(--mut);font-size:18px;max-width:680px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:28px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
@@ -24,7 +29,7 @@ footer{color:var(--mut);font-size:13px;border-top:1px solid var(--line);margin-t
 </style></head><body>
 <div class="banner">TESTNET DEMO · Base Sepolia only · No real payments · CRED has no monetary value</div>
 <div class="wrap">
-<header><div class="logo">Compute<span>Credit</span> · CRED</div><button id="connect">Connect wallet</button></header>
+<header><div class="logo"><img src="/images/icon-180.png" alt="ComputeCred logo">Compute<span>Cred</span></div><button id="connect">Connect wallet</button></header>
 <h1>Prepaid credits for AI agent runs.</h1>
 <p class="lead">Buy CRED at a fixed price of <b>1 CRED = $1 of compute</b>, then spend it on AI services: chat, writing, research, coding, images, and a math lab. Each spend burns credits on-chain, and our backend runs your job.</p>
 <div class="grid">
@@ -47,7 +52,7 @@ footer{color:var(--mut);font-size:13px;border-top:1px solid var(--line);margin-t
 </div>
 <div id="msg"></div>
 <div class="card"><h3>Your runs</h3><div id="jobs" class="mut">Connect your wallet to see your runs.</div></div>
-<footer>Contract <a id="clink" target="_blank"></a> on Base Sepolia (84532) · Source verified on Sourcify · Testnet demo, not financial advice.</footer>
+<footer>© 2026 ComputeCred · CRED token · Contract <a id="clink" target="_blank"></a> on Base Sepolia (84532) · Source verified on Sourcify · Testnet demo, not financial advice.</footer>
 </div>
 <script type="module">
 import { createPublicClient, createWalletClient, custom, http, parseAbi, formatUnits, parseUnits, stringToHex, baseSepolia } from '/viem.js';
