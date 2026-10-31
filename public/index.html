@@ -1,59 +1,90 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ComputeCred · AI Compute Credits (Testnet)</title>
-<meta name="description" content="ComputeCred: prepaid CRED credits for AI agent runs. 1 CRED = $1 of compute. Testnet demo.">
+<title>ComputeCred · Prepaid credits for AI compute</title>
+<meta name="description" content="ComputeCred: prepaid CRED credits for AI agent runs. 1 CRED = $1 of compute. Hard-capped at 23M, verified on-chain. Testnet.">
 <meta name="theme-color" content="#06142b">
-<meta property="og:title" content="ComputeCred · AI Compute Credits"><meta property="og:description" content="Prepaid CRED credits for AI agent runs: chat, writing, research, coding, images. 1 CRED = $1 of compute.">
-<meta property="og:image" content="/images/icon-512.png"><meta property="og:type" content="website"><meta name="twitter:card" content="summary">
+<meta property="og:title" content="ComputeCred · Prepaid credits for AI compute"><meta property="og:description" content="Pay for AI chat, writing, research, coding, images and math with CRED. 1 CRED = $1 of compute.">
+<meta property="og:image" content="https://computecred.ai/images/og.png"><meta property="og:url" content="https://computecred.ai"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://computecred.ai/images/og.png">
 <link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" type="image/png" href="/images/icon-32.png"><link rel="apple-touch-icon" href="/images/icon-180.png">
-<style>
-:root{--bg:#06142b;--card:#0c2142;--line:#1b3560;--txt:#e8ebf2;--mut:#98a1b5;--acc:#14d4d4;--warn:#fbbf24}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.5}
-.wrap{max-width:980px;margin:auto;padding:24px}
-.banner{background:var(--warn);color:#111;text-align:center;font-weight:600;padding:8px;font-size:14px}
-header{display:flex;justify-content:space-between;align-items:center;padding:12px 0}
-.logo{font-weight:800;font-size:20px;display:flex;align-items:center;gap:10px}.logo img{width:38px;height:38px;border-radius:9px;background:#fff}.logo span{color:var(--acc)}
-h1{font-size:40px;margin:32px 0 8px}.lead{color:var(--mut);font-size:18px;max-width:680px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:28px 0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
-.card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--mut);font-size:14px}
-button{background:var(--acc);color:#04203a;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}
-button:disabled{opacity:.5;cursor:default}button.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
-input,select{background:#081a36;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px;font-size:15px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
-.stat{font-size:28px;font-weight:800}.mut{color:var(--mut);font-size:13px}
-.tag{display:inline-block;background:#3a2f0b;color:var(--warn);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700}
-.bar{height:8px;background:#081a36;border-radius:6px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--acc)}
-.job{border-top:1px solid var(--line);padding:10px 0;font-size:14px}.job code{color:var(--acc);word-break:break-all}
-a{color:var(--acc)}#msg{min-height:20px;font-size:14px;color:var(--warn);margin-top:8px}
-footer{color:var(--mut);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:16px}
-</style></head><body>
-<div class="banner">TESTNET DEMO · Base Sepolia only · No real payments · CRED has no monetary value</div>
-<div class="wrap">
-<header><div class="logo"><img src="/images/icon-180.png" alt="ComputeCred logo">Compute<span>Cred</span></div><button id="connect">Connect wallet</button></header>
-<h1>Prepaid credits for AI agent runs.</h1>
-<p class="lead">Buy CRED at a fixed price of <b>1 CRED = $1 of compute</b>, then spend it on AI services: chat, writing, research, coding, images, and a math lab. Each spend burns credits on-chain, and our backend runs your job.</p>
-<div class="grid">
- <div class="card"><h3>⚡ Pay per run</h3><p>Spending burns your credits and records a run ID. That event triggers the job.</p></div>
- <div class="card"><h3>🔒 Hard cap: 23,000,000</h3><p>No more than 23M CRED ($23M of compute) can ever be minted. Burned credits don't free up room to mint again.</p></div>
- <div class="card"><h3>🚫 Non-transferable</h3><p>Credits can't be sent or traded. They're for buying compute, like a prepaid gift card.</p></div>
- <div class="card"><h3>📄 Not an investment</h3><p>Fixed price: $1 per credit. No profit, yield, or price-increase promises.</p></div>
-</div>
-<div class="grid">
- <div class="card"><div class="mut">Your balance</div><div class="stat" id="bal">-</div><div class="mut" id="addr">Not connected</div></div>
- <div class="card"><div class="mut">Lifetime minted / cap</div><div class="stat" id="minted">-</div><div class="bar"><i id="capbar" style="width:0"></i></div><div class="mut">of 23,000,000 CRED</div></div>
-</div>
-<div class="grid">
- <div class="card"><h3>Buy credits <span class="tag">TEST</span></h3><p>Demo only: free test credits, up to 10 per request (one request a minute). In production this step will be a fixed-price payment ($1 per CRED) via Stripe or USDC.</p>
-  <div class="row"><input id="amt" type="number" min="1" max="10" value="5" style="width:100px"><button id="buy" disabled>Get test credits</button></div></div>
- <div class="card"><h3>Start an AI run</h3><p>Pick a service and type your prompt. Your wallet burns the credits, then the AI runs the job. <span class="mut" id="prov"></span></p>
-  <div class="row"><select id="run" style="width:100%"></select></div>
-  <textarea id="prompt" rows="4" placeholder="Your prompt…" style="width:100%;margin-top:10px;background:#081a36;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px;font:inherit"></textarea>
-  <div class="row"><button id="start" disabled>Spend &amp; run</button></div></div>
-</div>
-<div id="msg"></div>
-<div class="card"><h3>Your runs</h3><div id="jobs" class="mut">Connect your wallet to see your runs.</div></div>
-<footer>© 2026 ComputeCred · CRED token · Contract <a id="clink" target="_blank"></a> on Base Sepolia (84532) · Source verified on Sourcify · Testnet demo, not financial advice.</footer>
-</div>
+<link rel="stylesheet" href="/style.css">
+</head><body>
+<div class="banner">Testnet preview · Base Sepolia · No real payments · CRED has no monetary value</div>
+<nav class="nav"><div class="wrap navin">
+ <a href="#top" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a>
+ <div class="links" id="links"><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#how">How it works</a><a href="#transparency">Contract</a><a href="#faq">FAQ</a></div>
+ <button id="connect" class="btn">Connect wallet</button>
+ <button class="burger" aria-label="Menu" onclick="document.getElementById('links').classList.toggle('open')">☰</button>
+</div></nav>
+<header class="hero" id="top"><div class="gridbg"></div><div class="glow"></div>
+ <div class="wrap herogrid">
+  <div>
+   <div class="pill"><i></i> Live on Base Sepolia testnet</div>
+   <h1>Prepaid credits for <span class="grad">AI compute.</span></h1>
+   <p class="lead">One credit, one dollar of compute. Use CRED to run AI chat, writing, research, coding, images and a math lab. Every run is paid on-chain, and failed runs refund automatically.</p>
+   <div class="ctas"><a href="#app" class="btn lg">Launch app →</a><a href="#how" class="btn ghost lg">How it works</a></div>
+   <div class="kpis"><div><b>$1</b><span>per CRED</span></div><div><b>23M</b><span>hard cap</span></div><div><b>7</b><span>AI services</span></div></div>
+  </div>
+  <div class="preview">
+   <div class="pvtop"><span></span><span></span><span></span><em>computecred.ai/app</em></div>
+   <div class="pvbody">
+    <div class="mut">Balance</div><div class="pvbal">42.75 <small>CRED</small></div>
+    <div class="pvrow"><span>✦ Research summary</span><b>0.5 CRED</b></div>
+    <div class="pvprompt">Summarize the latest results on AI agent benchmarks…</div>
+    <div class="pvres"><span class="ok">● Completed</span> in 6.2s · refund-protected<div class="lines"><i></i><i></i><i style="width:60%"></i></div></div>
+   </div>
+  </div>
+ </div>
+</header>
+<main>
+<section id="services" class="wrap sec"><div class="eyebrow">Services</div><h2>One credit, every AI service.</h2><p class="sub">Choose a service, write your prompt and pay per run. You only pay for what you use, with no subscription.</p>
+ <div class="cards" id="svc"></div></section>
+<section id="how" class="wrap sec"><div class="eyebrow">How it works</div><h2>Three steps, fully on-chain.</h2>
+ <div class="steps">
+  <div class="step"><b>01</b><h3>Get credits</h3><p>Buy CRED at a fixed $1 each. On testnet, claim free test credits instead.</p></div>
+  <div class="step"><b>02</b><h3>Spend on a run</h3><p>Your wallet burns the credits and records a run ID. Credits can't be transferred, so they work like a prepaid card.</p></div>
+  <div class="step"><b>03</b><h3>Get your result</h3><p>Our backend sees the burn and runs the job, and the result appears here. If a run fails, the credits are refunded automatically.</p></div>
+ </div></section>
+<section id="app" class="wrap sec"><div class="eyebrow">App</div><h2>Your dashboard</h2>
+ <div class="dash">
+  <div class="panel">
+   <div class="stat"><div class="mut">Your balance</div><div class="big" id="bal">—</div><div class="mut mono" id="addr">Not connected</div></div>
+   <div class="divider"></div>
+   <h3>Get test credits <span class="tag">TEST</span></h3><p class="mut">Up to 10 per request, once a minute. In production this step becomes a $1/CRED card or USDC payment.</p>
+   <div class="row"><input id="amt" type="number" min="1" max="10" value="5" aria-label="Amount"><button id="buy" class="btn" disabled>Get test credits</button></div>
+  </div>
+  <div class="panel wide">
+   <h3>Start an AI run</h3><p class="mut">Choose a service and write a prompt. <span id="prov"></span></p>
+   <label class="lbl" for="run">Service</label><select id="run"></select>
+   <label class="lbl" for="prompt" id="plbl">Prompt</label><textarea id="prompt" rows="5" placeholder="Ask anything…"></textarea>
+   <div class="row between"><span class="mut" id="costhint"></span><button id="start" class="btn" disabled>Spend &amp; run</button></div>
+   <div id="msg" class="status" role="status"></div>
+  </div>
+ </div>
+ <div class="panel runs"><div class="row between"><h3>Your runs</h3><span class="mut">Refreshes every 5s</span></div><div id="jobs" class="mut">Connect your wallet to see your runs.</div></div>
+</section>
+<section id="pricing" class="wrap sec"><div class="eyebrow">Pricing</div><h2>Simple, per-run pricing.</h2><p class="sub">1 CRED = $1. Prices below are per run.</p>
+ <div class="table"><table><thead><tr><th>Service</th><th>Type</th><th class="r">CRED / run</th><th class="r">USD</th></tr></thead><tbody id="ptable"></tbody></table></div></section>
+<section id="transparency" class="wrap sec"><div class="eyebrow">Transparency</div><h2>Verifiable by anyone.</h2>
+ <div class="cards three">
+  <div class="card"><div class="mut">Lifetime minted</div><div class="big" id="minted">—</div><div class="bar"><i id="capbar"></i></div><div class="mut">of 23,000,000 CRED hard cap</div></div>
+  <div class="card"><div class="mut">Contract · Base Sepolia (84532)</div><a class="mono addr" id="clink" target="_blank" rel="noopener"></a><div class="mut">Source code verified on <a href="https://sourcify.dev" target="_blank" rel="noopener">Sourcify</a></div></div>
+  <div class="card"><div class="mut">Guarantees in code</div><ul class="checks"><li>23M lifetime cap</li><li>Non-transferable</li><li>Burn-to-spend, pausable</li></ul></div>
+ </div></section>
+<section id="faq" class="wrap sec narrow"><div class="eyebrow">FAQ</div><h2>Questions</h2>
+ <details><summary>What is CRED?</summary><p>A prepaid credit for AI compute. One CRED buys $1 of AI services on ComputeCred.</p></details>
+ <details><summary>Can I trade or transfer CRED?</summary><p>Not right now. Credits can't be transferred and are only used to pay for compute. Trading will only be considered after a legal review.</p></details>
+ <details><summary>Is this an investment?</summary><p>No. The price is fixed at $1 per credit, and there are no promises of profit, yield or a rising price.</p></details>
+ <details><summary>What happens if a run fails?</summary><p>The backend automatically refunds the credits you spent on that run.</p></details>
+ <details><summary>Is this live with real money?</summary><p>Not yet. ComputeCred is running on the Base Sepolia testnet, and test credits are free.</p></details>
+ <details><summary>Which AI powers the services?</summary><p>xAI's Grok models, with more providers planned.</p></details>
+</section>
+</main>
+<footer class="foot"><div class="wrap footin">
+ <div><a href="#top" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a><p class="mut">Prepaid credits for AI compute.</p></div>
+ <div class="fl"><b>Product</b><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#app">App</a></div>
+ <div class="fl"><b>Resources</b><a href="#transparency">Contract</a><a href="#faq">FAQ</a><a href="https://x.com" target="_blank" rel="noopener">X</a></div>
+ <div class="fl"><b>Legal</b><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a></div>
+</div><div class="wrap legal mut">© 2026 ComputeCred. Testnet demo running on Base Sepolia. CRED has no monetary value and is not an investment. This is not financial advice.</div></footer>
+<div id="toasts" aria-live="polite"></div>
 <script type="module">
 import { createPublicClient, createWalletClient, custom, http, parseAbi, formatUnits, parseUnits, stringToHex, baseSepolia } from '/viem.js';
 const cfg = await (await fetch('/api/config')).json(); const C = cfg.contract;
@@ -61,45 +92,50 @@ const abi = parseAbi(['function balanceOf(address) view returns (uint256)','func
 const pub = createPublicClient({ chain: baseSepolia, transport: http('https://sepolia.base.org') });
 const $ = id => document.getElementById(id); let user, wallet;
 $('clink').textContent = C; $('clink').href = 'https://sepolia.basescan.org/address/' + C;
-for (const [k, r] of Object.entries(cfg.runs)) $('run').add(new Option(`${r.label}: ${r.cost} CRED`, k));
+const ico={text:'✦',image:'◐',math:'∑'};const desc={chat:'Ask questions and get clear answers.',writing:'Write posts, emails and copy.',research:'Summarize long sources into key points.',coding:'Write, explain and debug code.',image:'Create an image from a text prompt.',zeros10:'Compute the first 10 Riemann zeta zeros.',zeros50:'Compute the first 50 Riemann zeta zeros.'};
+for (const [k, r] of Object.entries(cfg.runs)) { $('run').add(new Option(`${r.label} · ${r.cost} CRED`, k));
+ $('svc').insertAdjacentHTML('beforeend',`<a href="#app" class="card svc" data-k="${k}"><div class="ico">${ico[r.kind]||'✦'}</div><h3>${r.label}</h3><p>${desc[k]||''}</p><div class="price">${r.cost} CRED</div></a>`);
+ $('ptable').insertAdjacentHTML('beforeend',`<tr><td>${r.label}</td><td><span class="chip">${r.kind}</span></td><td class="r">${r.cost}</td><td class="r">$${r.cost.toFixed(2)}</td></tr>`); }
+document.querySelectorAll('.svc').forEach(a=>a.onclick=()=>{$('run').value=a.dataset.k;$('run').onchange();});
 $('prov').textContent = cfg.provider === 'demo' ? '(Demo mode: AI provider not configured, responses are placeholders.)' : `(Powered by ${cfg.provider})`;
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-$('run').onchange = () => { $('prompt').style.display = cfg.runs[$('run').value].kind === 'math' ? 'none' : 'block'; };
-const msg = t => $('msg').innerHTML = t; const fmt = v => Number(formatUnits(v, 18)).toLocaleString();
+$('run').onchange = () => { const r=cfg.runs[$('run').value]; const m=r.kind==='math'; $('prompt').style.display=$('plbl').style.display=m?'none':'block'; $('costhint').textContent=`Cost: ${r.cost} CRED ($${r.cost.toFixed(2)})`; }; $('run').onchange();
+const toast=(t,k='err')=>{const d=document.createElement('div');d.className='toast '+k;d.innerHTML=t;$('toasts').append(d);setTimeout(()=>d.remove(),6000)};
+const msg = (t,k) => { $('msg').innerHTML = t ? `<span class="spin"></span>${t}` : ''; if(k) { $('msg').innerHTML=''; toast(t,k); } }; const fmt = v => Number(formatUnits(v, 18)).toLocaleString();
 async function refresh() {
   const m = await pub.readContract({ address: C, abi, functionName: 'totalMinted' });
   $('minted').textContent = fmt(m); $('capbar').style.width = Math.max(0.5, Number(m * 10000n / (23000000n * 10n**18n)) / 100) + '%';
   if (!user) return;
   $('bal').textContent = fmt(await pub.readContract({ address: C, abi, functionName: 'balanceOf', args: [user] })) + ' CRED';
   const jobs = await (await fetch('/api/jobs?user=' + user)).json();
-  $('jobs').innerHTML = jobs.length ? jobs.map(j => `<div class="job"><b>${j.label || j.runId}</b> · ${j.amount} CRED · <b>${j.status}</b> · <a target=_blank href="https://sepolia.basescan.org/tx/${j.txHash}">tx</a>
+  $('jobs').innerHTML = jobs.length ? jobs.map(j => `<div class="job"><div class="jh"><b>${j.label || j.runId}</b><span class="badge ${j.status}">${j.status}</span><span class="mut">${j.amount} CRED</span> <a target=_blank href="https://sepolia.basescan.org/tx/${j.txHash}">tx ↗</a></div>
    ${j.prompt ? `<div class="mut">“${esc(j.prompt)}”</div>` : ''}${!j.result ? '' : j.result.kind === 'math' ? `<div>${j.result.zeros.length} zeros in ${j.result.seconds}s on the critical line Re(s)=½ (mpmath). First: <code>${j.result.zeros.slice(0,5).join(', ')}…</code> Last: <code>${j.result.zeros.at(-1)}</code></div>`
    : j.result.kind === 'image' ? `<div>${j.result.demo ? '<span class=tag>DEMO</span>' : ''}<br><img style="max-width:100%;border-radius:10px;margin-top:6px" src="${esc(j.result.url || ('data:image/png;base64,' + j.result.b64))}"></div>`
-   : `<div style="white-space:pre-wrap;background:#081a36;border-radius:10px;padding:10px;margin-top:6px">${j.result.demo ? '<span class=tag>DEMO</span> ' : ''}${esc(j.result.text)}</div>`}${j.error ? `<div>${esc(j.error)}</div>` : ''}${j.refund ? `<div>↩️ Refund ${j.refund.amount} CRED: ${j.refund.status}${j.refund.txHash ? ` <a target=_blank href="https://sepolia.basescan.org/tx/${j.refund.txHash}">tx</a>` : ''}</div>` : ''}</div>`).join('') : 'No runs yet.';
+   : `<div class="out">${j.result.demo ? '<span class=tag>DEMO</span> ' : ''}${esc(j.result.text)}</div>`}${j.error ? `<div>${esc(j.error)}</div>` : ''}${j.refund ? `<div>↩️ Refund ${j.refund.amount} CRED: ${j.refund.status}${j.refund.txHash ? ` <a target=_blank href="https://sepolia.basescan.org/tx/${j.refund.txHash}">tx</a>` : ''}</div>` : ''}</div>`).join('') : 'No runs yet.';
 }
 $('connect').onclick = async () => {
-  if (!window.ethereum) return msg('No wallet found. Install MetaMask or another browser wallet.');
+  if (!window.ethereum) return msg('No wallet found. Install MetaMask or another browser wallet.','err');
   try { await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x14a34' }] }); }
-  catch (e) { if (e.code === 4902) await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x14a34', chainName: 'Base Sepolia', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://sepolia.base.org'], blockExplorerUrls: ['https://sepolia.basescan.org'] }] }); else return msg('Network switch rejected.'); }
+  catch (e) { if (e.code === 4902) await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x14a34', chainName: 'Base Sepolia', nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: ['https://sepolia.base.org'], blockExplorerUrls: ['https://sepolia.basescan.org'] }] }); else return msg('Network switch rejected.','err'); }
   wallet = createWalletClient({ chain: baseSepolia, transport: custom(ethereum) }); [user] = await wallet.requestAddresses();
-  $('addr').textContent = user; $('connect').textContent = user.slice(0,6) + '…' + user.slice(-4); $('buy').disabled = $('start').disabled = false; refresh();
+  $('addr').textContent = user; $('connect').textContent = user.slice(0,6) + '…' + user.slice(-4); $('buy').disabled = $('start').disabled = false; $('connect').classList.add('ghost'); refresh();
 };
 $('buy').onclick = async () => {
   $('buy').disabled = true; msg('Minting test credits…');
   const r = await (await fetch('/api/test-mint', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ address: user, amount: Number($('amt').value) }) })).json();
-  msg(r.txHash ? `Minted. <a target=_blank href="https://sepolia.basescan.org/tx/${r.txHash}">View tx</a>` : r.error); $('buy').disabled = false; refresh();
+  msg(''); r.txHash ? toast(`Credits minted. <a target=_blank href="https://sepolia.basescan.org/tx/${r.txHash}">View tx ↗</a>`,'ok') : toast(esc(r.error||'Mint failed')); $('buy').disabled = false; refresh();
 };
 $('start').onclick = async () => {
   const k = $('run').value;
   try {
     const rq = await (await fetch('/api/requests', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ service: k, prompt: $('prompt').value, address: user }) })).json();
-    if (rq.error) return msg(rq.error);
+    if (rq.error) return msg(esc(rq.error),'err');
     const { runId, cost } = rq;
     msg('Confirm in your wallet (you need a little Base Sepolia ETH for gas)…');
     const hash = await wallet.writeContract({ account: user, address: C, abi, functionName: 'spendCredits', args: [parseUnits(String(cost), 18), stringToHex(runId, { size: 32 })] });
     msg(`Spent ${cost} CRED, waiting for the job… <a target=_blank href="https://sepolia.basescan.org/tx/${hash}">tx</a>`);
-    await pub.waitForTransactionReceipt({ hash }); refresh();
-  } catch (e) { msg(e.shortMessage || 'Transaction failed'); }
+    await pub.waitForTransactionReceipt({ hash }); msg(''); toast('Run paid. Your result will appear below.','ok'); refresh();
+  } catch (e) { msg(e.shortMessage || 'Transaction failed','err'); }
 };
-refresh(); setInterval(refresh, 5000);
+refresh().catch(()=>{}); setInterval(()=>refresh().catch(()=>{}), 5000);
 </script></body></html>
