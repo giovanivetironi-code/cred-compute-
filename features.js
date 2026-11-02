@@ -26,6 +26,7 @@ module.exports = (app, ctx) => {
   const adminOnly = (req, res, next) => isAdmin(req) ? next() : res.status(401).json({ error: 'unauthorized' });
   const setups = []; // table setup run after accounts tables exist
   (async () => { await ctx.ready(); if (!enabled()) return; for (const s of setups) await q(s); console.log('features: ready'); })().catch(e => console.error('features init failed:', e.message));
+  const adminExtras = [];
   const html = (res, p, status = 200) => res.status(status).type('html').send(page(p));
   const labelOf = s => RUNS[s]?.label || ({ duel: 'AI duel', market: 'Marketplace prompt' }[String(s).split(':')[0]] || s);
 
@@ -126,6 +127,39 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
 <div id="dres"></div>
 <h2 style="margin-top:48px">Leaderboard</h2><p class="sub">Win rate counts a tie as half a win. Votes come from signed-in users, one per duel.</p>
 <div class="mgrid">${DUEL_CATS.map(table).join('')}</div>`, script: '<script src="/duel.js"></script>' });
+  }));
+
+  // ---------- 3) Pay only if you liked it (one-tap refunds) ----------
+  const REFUND = { windowHours: 24, perDay: 3, monthPct: 0.2, monthFloorCents: 100 };
+  setups.push(`CREATE TABLE IF NOT EXISTS user_refunds (id serial PRIMARY KEY, user_id integer REFERENCES users(id), run_id text UNIQUE, cents integer NOT NULL, reason text, created_at timestamptz DEFAULT now())`);
+  async function refundQuota(uid) {
+    const [d, m, sp] = await Promise.all([q("SELECT COUNT(*) n FROM user_refunds WHERE user_id=$1 AND created_at > now() - interval '1 day'", [uid]),
+      q("SELECT COALESCE(SUM(cents),0) c FROM user_refunds WHERE user_id=$1 AND created_at >= date_trunc('month', now())", [uid]),
+      q("SELECT COALESCE(SUM(cost_cents),0) c FROM runs WHERE user_id=$1 AND status='done' AND created_at >= date_trunc('month', now())", [uid])]);
+    const cap = Math.max(Math.floor(Number(sp.rows[0].c) * REFUND.monthPct), REFUND.monthFloorCents);
+    return { todayLeft: Math.max(0, REFUND.perDay - Number(d.rows[0].n)), monthRefundedCents: Number(m.rows[0].c), monthCapCents: cap };
+  }
+  app.get('/api/refunds/quota', auth, limit(60, 60_000), wrap(async (req, res) => res.json({ ...(await refundQuota(req.user.id)), rules: REFUND })));
+  app.post('/api/runs/:id/refund', auth, limit(10, 60_000), wrap(async (req, res) => {
+    const run = (await q('SELECT * FROM runs WHERE id=$1 AND user_id=$2', [String(req.params.id), req.user.id])).rows[0]; if (!run) return res.status(404).json({ error: 'Run not found.' });
+    if (run.status !== 'done' || run.meta?.userRefund) return res.status(409).json({ error: 'This run was already refunded or did not finish.' });
+    if (Date.now() - new Date(run.created_at) > REFUND.windowHours * 3600e3) return res.status(403).json({ error: 'Refunds are available for 24 hours after a run.' });
+    const cents = run.meta?.baseCents ?? run.cost_cents; // marketplace markup is not refundable
+    const qu = await refundQuota(req.user.id);
+    if (!qu.todayLeft) return res.status(429).json({ error: 'You can refund up to 3 runs per day.' });
+    if (qu.monthRefundedCents + cents > qu.monthCapCents) return res.status(403).json({ error: 'Monthly refund limit reached (20% of this month\'s spend, minimum 1 credit).' });
+    const reason = clean(req.body?.reason, 200);
+    const ins = await q('INSERT INTO user_refunds (user_id, run_id, cents, reason) VALUES ($1,$2,$3,$4) ON CONFLICT (run_id) DO NOTHING RETURNING id', [req.user.id, run.id, cents, reason]);
+    if (!ins.rowCount) return res.status(409).json({ error: 'Already refunded.' });
+    await credit(req.user.id, cents, 'userrefund', 'urefund-' + run.id, { reason });
+    await q(`UPDATE runs SET meta = COALESCE(meta,'{}'::jsonb) || '{"userRefund":true}'::jsonb WHERE id=$1`, [run.id]);
+    res.json({ refunded: cents / 100 });
+  }));
+  app.get('/api/admin/features', adminOnly, limit(30, 60_000), wrap(async (req, res) => {
+    const out = {};
+    out.refunds = (await q('SELECT r.created_at, u.email, r.run_id, r.cents, r.reason FROM user_refunds r JOIN users u ON u.id=r.user_id ORDER BY r.id DESC LIMIT 100')).rows;
+    for (const f of adminExtras) Object.assign(out, await f());
+    res.json(out);
   }));
 
   return { page, html, setups, optAuth, adminOnly, esc, clean, filtered, labelOf };

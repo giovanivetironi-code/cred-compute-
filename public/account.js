@@ -8,7 +8,7 @@ if (q.get('paid')) toast('Payment received. Your credits will appear in a few se
 if (q.get('canceled')) toast('Checkout canceled.', 'ok');
 if (q.get('login') === 'expired') toast('That sign-in link expired. Request a new one.');
 function show(id) { for (const x of ['acct-off', 'acct-login', 'acct-in']) $(x).hidden = x !== id; }
-const acts = r => `<div class="jacts"><button class="btn ghost sm" data-share="${esc(r.id)}" data-on="${r.shared ? 0 : 1}">${r.shared ? 'Make private' : 'Share publicly'}</button>${window.CC_EXTRA_ACTS ? window.CC_EXTRA_ACTS(r) : ''}</div>`;
+const acts = r => `<div class="jacts"><button class="btn ghost sm" data-share="${esc(r.id)}" data-on="${r.shared ? 0 : 1}">${r.shared ? 'Make private' : 'Share publicly'}</button>${r.meta?.userRefund ? '<span class="badge refunded">refunded</span>' : (Date.now() - new Date(r.created_at) < 864e5 ? `<button class="btn ghost sm" data-refund="${esc(r.id)}">Didn't like it? Refund</button>` : '')}</div>`;
 function render(a) {
   show('acct-in'); $('aemail').textContent = a.email; $('abal').textContent = a.balance.toLocaleString(undefined, { maximumFractionDigits: 2 });
   $('ahist').innerHTML = a.runs.length ? a.runs.map(r => { const res = r.result || {};
@@ -34,7 +34,10 @@ async function init() {
   $('astart').onclick = async () => { $('astart').disabled = true; $('amsg').innerHTML = '<span class="spin"></span>Running…';
     const r = await api('/api/account/run', { service: $('arun').value, prompt: $('aprompt').value }); $('astart').disabled = false; $('amsg').innerHTML = '';
     if (!r.ok) return toast(esc(r.error || 'Run failed')); toast(`Started. ${r.cost} credits charged; refunded automatically if it fails.`, 'ok'); load(); };
-  $('ahist').onclick = async e => { const b = e.target.closest('[data-share]'); if (!b) return; b.disabled = true;
+  $('ahist').onclick = async e => { const f = e.target.closest('[data-refund]');
+    if (f) { if (!confirm('Refund this run? Limits: within 24 hours, up to 3 per day and 20% of this month\'s spend (minimum 1 credit).')) return; f.disabled = true;
+      const r = await api(`/api/runs/${f.dataset.refund}/refund`, {}); f.disabled = false; if (!r.ok) return toast(esc(r.error || 'Refund failed')); toast(`Refunded ${r.refunded} credits.`, 'ok'); return load(); }
+    const b = e.target.closest('[data-share]'); if (!b) return; b.disabled = true;
     const r = await api(`/api/receipt/${b.dataset.share}/share`, { shared: b.dataset.on === '1' }); b.disabled = false;
     if (!r.ok) return toast(esc(r.error || 'Could not update')); toast(r.shared ? 'Receipt is public. Anyone with the link can see the prompt and result.' : 'Receipt is private again.', 'ok'); load(); };
   window.CC_RELOAD = load;
