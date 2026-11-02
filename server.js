@@ -170,7 +170,8 @@ app.get('/api/jobs', (req, res) => {
   res.json([...jobs.values()].filter(j => !u || j.user.toLowerCase() === u).reverse().slice(0, 20));
 });
 console.log('AI provider:', getProvider().name); // name only, never the key
-require('./accounts')(app, { RUNS, execute, db, limit });
+const acct = require('./accounts')(app, { RUNS, execute, db, limit });
+require('./features')(app, { ...acct, RUNS, execute, limit, getProvider, ABOUT });
 app.use((req, res) => { if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' }); res.status(404).sendFile(path.join(__dirname, 'public', '404.html')); });
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () => console.log(`CRED demo on :${PORT} (minter ${account.address})`));

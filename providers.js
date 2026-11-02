@@ -5,11 +5,11 @@ const XAI_BASE = 'https://api.x.ai/v1';
 const xai = {
   name: 'xai',
   available: () => !!process.env.XAI_API_KEY,
-  async text({ system, prompt, maxTokens }) {
+  async text({ system, prompt, maxTokens, model }) {
     const r = await fetch(`${XAI_BASE}/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.XAI_API_KEY}` },
-      body: JSON.stringify({ model: process.env.XAI_TEXT_MODEL || 'grok-4.7', max_tokens: maxTokens,
+      body: JSON.stringify({ model: model || process.env.XAI_TEXT_MODEL || 'grok-4.7', max_tokens: maxTokens,
         messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] }),
       signal: AbortSignal.timeout(180_000),
     });

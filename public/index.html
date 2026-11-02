@@ -10,7 +10,7 @@
 <div class="banner">Testnet preview · Base Sepolia · No real payments · CRED has no monetary value</div>
 <nav class="nav"><div class="wrap navin">
  <a href="#top" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a>
- <div class="links" id="links"><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#how">How it works</a><a href="#transparency">Contract</a><a href="#faq">FAQ</a><a href="#account">Account</a></div>
+ <div class="links" id="links"><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="/duel">Duel</a><a href="/market">Market</a><a href="/lab">Math lab</a><a href="#faq">FAQ</a><a href="#account">Account</a></div>
  <button id="connect" class="btn">Connect wallet</button>
  <button class="burger" aria-label="Menu" onclick="document.getElementById('links').classList.toggle('open')">☰</button>
 </div></nav>
@@ -153,4 +153,4 @@ $('start').onclick = async () => {
   } catch (e) { msg(e.shortMessage || 'Transaction failed','err'); }
 };
 refresh().catch(()=>{}); setInterval(()=>refresh().catch(()=>{}), 5000);
-</script><script src="/account.js" defer></script></body></html>
+</script><script src="/ui.js"></script><script src="/account.js" defer></script></body></html>

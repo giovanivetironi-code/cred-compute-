@@ -8,12 +8,13 @@ if (q.get('paid')) toast('Payment received. Your credits will appear in a few se
 if (q.get('canceled')) toast('Checkout canceled.', 'ok');
 if (q.get('login') === 'expired') toast('That sign-in link expired. Request a new one.');
 function show(id) { for (const x of ['acct-off', 'acct-login', 'acct-in']) $(x).hidden = x !== id; }
+const acts = r => `<div class="jacts"><button class="btn ghost sm" data-share="${esc(r.id)}" data-on="${r.shared ? 0 : 1}">${r.shared ? 'Make private' : 'Share publicly'}</button>${window.CC_EXTRA_ACTS ? window.CC_EXTRA_ACTS(r) : ''}</div>`;
 function render(a) {
   show('acct-in'); $('aemail').textContent = a.email; $('abal').textContent = a.balance.toLocaleString(undefined, { maximumFractionDigits: 2 });
   $('ahist').innerHTML = a.runs.length ? a.runs.map(r => { const res = r.result || {};
     const body = res.kind === 'math' ? `${res.zeros.length} zeros in ${res.seconds}s. First: <code>${esc(res.zeros.slice(0, 5).join(', '))}…</code>`
       : res.kind === 'image' ? `<img src="${esc(res.url || '')}" alt="">` : res.text ? `<div class="out">${esc(res.text)}</div>` : r.error ? `<div class="mut">${esc(r.error)}</div>` : '';
-    return `<div class="job"><div class="jh"><b>${esc(runs[r.service]?.label || r.service)}</b><span class="badge ${esc(r.status)}">${esc(r.status)}</span><span class="mut">${r.cost_cents / 100} credits · ${new Date(r.created_at).toLocaleString()}</span></div>${r.prompt ? `<div class="mut">“${esc(r.prompt.slice(0, 200))}”</div>` : ''}${body}</div>`; }).join('') : 'No runs yet.';
+    return `<div class="job"><div class="jh"><b>${esc(runs[r.service]?.label || r.service)}</b><span class="badge ${esc(r.status)}">${esc(r.status)}</span><span class="mut">${r.cost_cents / 100} credits · ${new Date(r.created_at).toLocaleString()}</span></div>${r.prompt ? `<div class="mut">“${esc(r.prompt.slice(0, 200))}”</div>` : ''}${body}${r.status === 'done' ? CC.proof(r) + acts(r) : ''}</div>`; }).join('') : 'No runs yet.';
   clearTimeout(timer); if (a.runs.some(r => r.status === 'running') || q.get('paid')) timer = setTimeout(load, 3000);
 }
 async function load() { const a = await api('/api/account'); if (a.ok && a.signedIn !== false) render(a); else show(flags.login ? 'acct-login' : 'acct-off'); }
@@ -33,6 +34,10 @@ async function init() {
   $('astart').onclick = async () => { $('astart').disabled = true; $('amsg').innerHTML = '<span class="spin"></span>Running…';
     const r = await api('/api/account/run', { service: $('arun').value, prompt: $('aprompt').value }); $('astart').disabled = false; $('amsg').innerHTML = '';
     if (!r.ok) return toast(esc(r.error || 'Run failed')); toast(`Started. ${r.cost} credits charged; refunded automatically if it fails.`, 'ok'); load(); };
+  $('ahist').onclick = async e => { const b = e.target.closest('[data-share]'); if (!b) return; b.disabled = true;
+    const r = await api(`/api/receipt/${b.dataset.share}/share`, { shared: b.dataset.on === '1' }); b.disabled = false;
+    if (!r.ok) return toast(esc(r.error || 'Could not update')); toast(r.shared ? 'Receipt is public. Anyone with the link can see the prompt and result.' : 'Receipt is private again.', 'ok'); load(); };
+  window.CC_RELOAD = load;
   load();
 }
 init().catch(() => show('acct-off'));

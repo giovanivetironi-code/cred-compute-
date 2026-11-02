@@ -19,7 +19,10 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
       CREATE TABLE IF NOT EXISTS ledger (id serial PRIMARY KEY, user_id integer REFERENCES users(id), delta_cents integer NOT NULL, kind text NOT NULL, ref text UNIQUE, meta jsonb, created_at timestamptz DEFAULT now());
       CREATE TABLE IF NOT EXISTS login_tokens (token_hash text PRIMARY KEY, email text NOT NULL, expires_at timestamptz NOT NULL, used boolean DEFAULT false);
       CREATE TABLE IF NOT EXISTS sessions (token_hash text PRIMARY KEY, user_id integer REFERENCES users(id), expires_at timestamptz NOT NULL);
-      CREATE TABLE IF NOT EXISTS runs (id text PRIMARY KEY, user_id integer REFERENCES users(id), service text, prompt text, status text, result jsonb, error text, cost_cents integer, created_at timestamptz DEFAULT now(), finished_at timestamptz);`);
+      CREATE TABLE IF NOT EXISTS runs (id text PRIMARY KEY, user_id integer REFERENCES users(id), service text, prompt text, status text, result jsonb, error text, cost_cents integer, created_at timestamptz DEFAULT now(), finished_at timestamptz);
+      ALTER TABLE runs ADD COLUMN IF NOT EXISTS model text; ALTER TABLE runs ADD COLUMN IF NOT EXISTS latency_ms integer; ALTER TABLE runs ADD COLUMN IF NOT EXISTS tokens jsonb;
+      ALTER TABLE runs ADD COLUMN IF NOT EXISTS shared boolean DEFAULT false; ALTER TABLE runs ADD COLUMN IF NOT EXISTS meta jsonb;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name text; ALTER TABLE users ADD COLUMN IF NOT EXISTS public_name boolean DEFAULT false;`);
     // Runs interrupted by a restart: refund them.
     const st = await q("SELECT id FROM runs WHERE status IN ('queued','running')"); for (const r of st.rows) await refundRun(r.id, 'interrupted by restart');
     console.log('accounts: enabled', JSON.stringify(flags()));
@@ -35,6 +38,14 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
     await credit(r.user_id, r.cost_cents, 'refund', 'refund-' + runId, { reason: why });
     await q("UPDATE runs SET status=CASE WHEN status='done' THEN status ELSE 'refunded' END, error=COALESCE(error,$2), finished_at=now() WHERE id=$1", [runId, why]);
   }
+  // Store a finished run with its proof data (model, latency, token usage).
+  async function finishRun(runId, out, t0) {
+    const r = out.result || {}; const model = r.model || (r.kind === 'math' ? 'mpmath' : out.provider) || null;
+    const u = r.usage ? { prompt: r.usage.prompt_tokens, completion: r.usage.completion_tokens, total: r.usage.total_tokens } : null;
+    const { usage, ...clean } = r;
+    await q("UPDATE runs SET status='done', result=$2, finished_at=now(), model=$3, latency_ms=$4, tokens=$5 WHERE id=$1", [runId, JSON.stringify(clean), model, Date.now() - t0, u && JSON.stringify(u)]);
+  }
+  const hooks = {};
   const cookie = req => Object.fromEntries((req.headers.cookie || '').split(/;\s*/).filter(Boolean).map(c => { const i = c.indexOf('='); return [c.slice(0, i), decodeURIComponent(c.slice(i + 1))]; }));
   async function auth(req, res, next) {
     if (!enabled()) return res.status(503).json({ error: 'Accounts are not enabled yet.' });
@@ -76,9 +87,9 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
   // Signed-out visitors get a quiet 200 instead of a 401 (avoids console errors on every page load).
   app.get('/api/account', (req, res, next) => enabled() && !cookie(req).cc_session ? res.json({ signedIn: false }) : next());
   app.get('/api/account', auth, wrap(async (req, res) => {
-    const runs = (await q('SELECT id, service, prompt, status, result, error, cost_cents, created_at, finished_at FROM runs WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20', [req.user.id])).rows;
+    const runs = (await q('SELECT id, service, prompt, status, result, error, cost_cents, created_at, finished_at, model, latency_ms, tokens, shared, meta FROM runs WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20', [req.user.id])).rows;
     const ledger = (await q('SELECT delta_cents, kind, created_at FROM ledger WHERE user_id=$1 ORDER BY id DESC LIMIT 30', [req.user.id])).rows;
-    res.json({ email: req.user.email, balance: req.user.balance_cents / 100, runs, ledger });
+    res.json({ email: req.user.email, displayName: req.user.display_name, publicName: req.user.public_name, balance: req.user.balance_cents / 100, runs, ledger });
   }));
   app.post('/api/account/run', auth, limit(10, 60_000), wrap(async (req, res) => {
     const service = String(req.body?.service || ''); const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : ''; const spec = RUNS[service];
@@ -91,7 +102,8 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
       await c.query("INSERT INTO runs (id, user_id, service, prompt, status, cost_cents) VALUES ($1,$2,$3,$4,'running',$5)", [runId, req.user.id, service, prompt.slice(0, 2000), cents]); return true; });
     if (!ok) return res.status(402).json({ error: 'Not enough credits. Buy a credit pack first.' });
     res.json({ runId, cost: spec.cost });
-    try { const out = await execute(service, prompt, runId); await q("UPDATE runs SET status='done', result=$2, finished_at=now() WHERE id=$1", [runId, JSON.stringify(out.result)]); }
+    const t0 = Date.now();
+    try { const out = await execute(service, prompt, runId); await finishRun(runId, out, t0); if (hooks.afterRun) await hooks.afterRun(runId, req.user, service, out.result); }
     catch (e) { await q('UPDATE runs SET error=$2 WHERE id=$1', [runId, String(e.message).slice(0, 200)]); await refundRun(runId, 'run failed'); }
   }));
 
@@ -150,4 +162,5 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
     res.json({ mode: req.query.mode === 'test' ? 'test' : 'live', revenue_usd: Number(rev.rows[0].usd), purchases: Number(rev.rows[0].n), users: Number(users.rows[0].n),
       outstanding_credits: users.rows[0].outstanding / 100, credits_spent: spent, est_provider_cost_usd: cost, est_gross_margin_usd: spent - cost, byService, recentPurchases: recent.rows });
   }));
+  return { q, tx, credit, refundRun, finishRun, auth, wrap, isAdmin, cookie, enabled, flags, sha, BASE, hooks, ready: () => ready, EST_COST_CENTS };
 };
