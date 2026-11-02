@@ -14,7 +14,7 @@ function render(a) {
   $('ahist').innerHTML = a.runs.length ? a.runs.map(r => { const res = r.result || {};
     const body = res.kind === 'math' ? `${res.zeros.length} zeros in ${res.seconds}s. First: <code>${esc(res.zeros.slice(0, 5).join(', '))}…</code>`
       : res.kind === 'image' ? `<img src="${esc(res.url || '')}" alt="">` : res.text ? `<div class="out">${esc(res.text)}</div>` : r.error ? `<div class="mut">${esc(r.error)}</div>` : '';
-    return `<div class="job"><div class="jh"><b>${esc(runs[r.service]?.label || r.service)}</b><span class="badge ${esc(r.status)}">${esc(r.status)}</span><span class="mut">${r.cost_cents / 100} credits · ${new Date(r.created_at).toLocaleString()}</span></div>${r.prompt ? `<div class="mut">“${esc(r.prompt.slice(0, 200))}”</div>` : ''}${body}${r.status === 'done' ? CC.proof(r) + acts(r) : ''}</div>`; }).join('') : 'No runs yet.';
+    return `<div class="job"><div class="jh"><b>${esc(runs[r.service]?.label || ({ duel: 'AI duel', market: 'Marketplace prompt' })[r.service.split(':')[0]] || r.service)}</b><span class="badge ${esc(r.status)}">${esc(r.status)}</span><span class="mut">${r.cost_cents / 100} credits · ${new Date(r.created_at).toLocaleString()}</span></div>${r.prompt ? `<div class="mut">“${esc(r.prompt.slice(0, 200))}”</div>` : ''}${body}${r.status === 'done' ? CC.proof(r) + acts(r) : ''}</div>`; }).join('') : 'No runs yet.';
   clearTimeout(timer); if (a.runs.some(r => r.status === 'running') || q.get('paid')) timer = setTimeout(load, 3000);
 }
 async function load() { const a = await api('/api/account'); if (a.ok && a.signedIn !== false) render(a); else show(flags.login ? 'acct-login' : 'acct-off'); }

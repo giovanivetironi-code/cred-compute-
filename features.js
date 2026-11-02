@@ -63,5 +63,70 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
 <div class="row"><a class="btn" href="/#account">Try ComputeCred</a><a class="btn ghost" target="_blank" rel="noopener noreferrer" href="https://x.com/intent/post?text=${encodeURIComponent('My ComputeCred AI receipt ' + BASE() + '/receipt/' + v.id + ' via @ComputeCred')}">Share on X</a></div>` });
   }));
 
+
+  // ---------- 2) AI duel ----------
+  const CONTENDERS = [{ id: 'grok-4.7', label: 'Grok 4.7' }, { id: 'grok-4.20-0309-non-reasoning', label: 'Grok 4.20 (fast)' }];
+  const DUEL_CATS = ['chat', 'writing', 'coding', 'research'];
+  setups.push(`CREATE TABLE IF NOT EXISTS duels (id text PRIMARY KEY, user_id integer REFERENCES users(id), category text NOT NULL, prompt text, left_model text, right_model text,
+    left_run text, right_run text, vote text, voted_at timestamptz, cost_cents integer, created_at timestamptz DEFAULT now())`);
+  async function runSide(runId, model, cat, prompt) {
+    const spec = RUNS[cat]; const t0 = Date.now();
+    try { const r = await getProvider().text({ system: ABOUT + '\n\nTask: ' + spec.system, prompt, maxTokens: spec.maxTokens, model, service: cat });
+      if (!r.model) r.model = model; await finishRun(runId, { result: r, provider: getProvider().name }, t0); }
+    catch (e) { await q('UPDATE runs SET error=$2 WHERE id=$1', [runId, String(e.message).slice(0, 200)]); await refundRun(runId, 'run failed'); }
+  }
+  app.get('/api/duel/config', (req, res) => res.json({ categories: Object.fromEntries(DUEL_CATS.map(c => [c, { label: RUNS[c].label, cost: RUNS[c].cost * 2, maxChars: RUNS[c].maxChars }])) }));
+  app.post('/api/duel', auth, limit(6, 60_000), wrap(async (req, res) => {
+    const cat = String(req.body?.category || ''); const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt : ''; const spec = RUNS[cat];
+    if (!DUEL_CATS.includes(cat)) return res.status(400).json({ error: 'Pick a category.' });
+    if (!prompt.trim() || prompt.length > spec.maxChars) return res.status(400).json({ error: `Prompt required, max ${spec.maxChars} characters.` });
+    const each = Math.round(spec.cost * 100), id = 'duel-' + crypto.randomBytes(8).toString('hex');
+    const [L, R] = Math.random() < 0.5 ? CONTENDERS : [CONTENDERS[1], CONTENDERS[0]];
+    const ok = await tx(async c => {
+      const d = await c.query('UPDATE users SET balance_cents = balance_cents - $1 WHERE id=$2 AND balance_cents >= $1', [each * 2, req.user.id]); if (!d.rowCount) return false;
+      for (const side of ['a', 'b']) { await c.query('INSERT INTO ledger (user_id, delta_cents, kind, ref) VALUES ($1,$2,$3,$4)', [req.user.id, -each, 'run', `run-${id}-${side}`]);
+        await c.query("INSERT INTO runs (id, user_id, service, prompt, status, cost_cents, meta) VALUES ($1,$2,$3,$4,'running',$5,$6)", [`${id}-${side}`, req.user.id, 'duel:' + cat, prompt.slice(0, 2000), each, JSON.stringify({ duel: id })]); }
+      await c.query('INSERT INTO duels (id, user_id, category, prompt, left_model, right_model, left_run, right_run, cost_cents) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [id, req.user.id, cat, prompt.slice(0, 2000), L.id, R.id, id + '-a', id + '-b', each * 2]);
+      return true; });
+    if (!ok) return res.status(402).json({ error: 'Not enough credits. Buy a credit pack first.' });
+    res.json({ id, cost: each * 2 / 100 });
+    await Promise.all([runSide(id + '-a', L.id, cat, prompt), runSide(id + '-b', R.id, cat, prompt)]);
+  }));
+  const label = m => CONTENDERS.find(c => c.id === m)?.label || m;
+  app.get('/api/duel/:id', auth, limit(120, 60_000), wrap(async (req, res) => {
+    const d = (await q('SELECT * FROM duels WHERE id=$1 AND user_id=$2', [String(req.params.id), req.user.id])).rows[0]; if (!d) return res.status(404).json({ error: 'Not found' });
+    const runs = (await q('SELECT id, status, result, error, cost_cents, created_at, model, latency_ms, tokens FROM runs WHERE id = ANY($1)', [[d.left_run, d.right_run]])).rows;
+    const side = (rid, m) => { const r = runs.find(x => x.id === rid) || {}; return { ...r, text: r.result?.text, model: d.vote ? r.model : null, label: d.vote ? label(m) : null }; };
+    res.json({ id: d.id, category: d.category, prompt: d.prompt, vote: d.vote, cost: d.cost_cents / 100, left: side(d.left_run, d.left_model), right: side(d.right_run, d.right_model) });
+  }));
+  app.post('/api/duel/:id/vote', auth, limit(30, 60_000), wrap(async (req, res) => {
+    const pick = String(req.body?.pick || ''); if (!['left', 'right', 'tie'].includes(pick)) return res.status(400).json({ error: 'Pick left, right or tie.' });
+    const d = (await q('SELECT * FROM duels WHERE id=$1 AND user_id=$2', [String(req.params.id), req.user.id])).rows[0]; if (!d) return res.status(404).json({ error: 'Not found' });
+    const st = (await q("SELECT COUNT(*) FILTER (WHERE status='done') n FROM runs WHERE id = ANY($1)", [[d.left_run, d.right_run]])).rows[0];
+    if (Number(st.n) < 2) return res.status(409).json({ error: 'Wait for both answers before voting.' });
+    const r = await q('UPDATE duels SET vote=$2, voted_at=now() WHERE id=$1 AND vote IS NULL RETURNING id', [d.id, pick]);
+    if (!r.rowCount) return res.status(409).json({ error: 'You already voted on this duel.' }); res.json({ ok: true });
+  }));
+  async function leaderboard() {
+    const rows = (await q(`SELECT category, m model, SUM(w) wins, SUM(l) losses, SUM(t) ties FROM (
+      SELECT category, left_model m, (vote='left')::int w, (vote='right')::int l, (vote='tie')::int t FROM duels WHERE vote IS NOT NULL
+      UNION ALL SELECT category, right_model, (vote='right')::int, (vote='left')::int, (vote='tie')::int FROM duels WHERE vote IS NOT NULL) x GROUP BY 1,2 ORDER BY 1, 3 DESC`)).rows;
+    return rows.map(r => { const n = Number(r.wins) + Number(r.losses) + Number(r.ties); return { category: r.category, model: r.model, label: label(r.model), wins: +r.wins, losses: +r.losses, ties: +r.ties, votes: n, winRate: n ? Math.round(100 * (+r.wins + 0.5 * +r.ties) / n) : 0 }; });
+  }
+  app.get('/api/leaderboard', limit(60, 60_000), wrap(async (req, res) => res.json(enabled() ? await leaderboard() : [])));
+  app.get('/duel', limit(60, 60_000), wrap(async (req, res) => {
+    const lb = enabled() ? await leaderboard() : [];
+    const table = cat => { const r = lb.filter(x => x.category === cat); return `<div class="panel"><h3>${esc(RUNS[cat].label)}</h3>${r.length ? `<div class="table"><table><thead><tr><th>Model</th><th class="r">Win rate</th><th class="r">W / L / T</th></tr></thead><tbody>${r.map(x => `<tr><td>${esc(x.label)}</td><td class="r">${x.winRate}%</td><td class="r">${x.wins} / ${x.losses} / ${x.ties}</td></tr>`).join('')}</tbody></table></div>` : '<p class="mut">No votes yet. Be the first.</p>'}</div>`; };
+    html(res, { title: 'AI Duel', desc: 'One prompt, two AI answers side by side. Vote for the better one and see the public leaderboard.', url: '/duel', body: `
+<div class="eyebrow">AI duel</div><h1>One prompt. Two answers. You decide.</h1>
+<p class="sub">Two models answer the same prompt side by side. Model names stay hidden until you vote, so the leaderboard stays fair.</p>
+<div class="panel" id="duelbox"><div id="duel-off" class="mut" hidden>Sign in on the <a href="/#account">account page</a> to start a duel.</div>
+ <div id="duel-on" hidden><label class="lbl" for="dcat">Category</label><select id="dcat"></select><label class="lbl" for="dprompt">Prompt</label><textarea id="dprompt" rows="4" placeholder="Write a tagline for a coffee shop run by robots"></textarea>
+ <div class="row between"><span class="mut" id="dcost"></span><button class="btn" id="dgo">Start duel</button></div></div></div>
+<div id="dres"></div>
+<h2 style="margin-top:48px">Leaderboard</h2><p class="sub">Win rate counts a tie as half a win. Votes come from signed-in users, one per duel.</p>
+<div class="mgrid">${DUEL_CATS.map(table).join('')}</div>`, script: '<script src="/duel.js"></script>' });
+  }));
+
   return { page, html, setups, optAuth, adminOnly, esc, clean, filtered, labelOf };
 };
