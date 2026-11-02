@@ -88,3 +88,5 @@ details p{color:var(--mut);margin:0 0 18px}
 .packs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.pack{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--txt);text-align:left;font-family:inherit;transition:border-color .2s,transform .15s}
 .pack:hover{border-color:var(--acc);transform:translateY(-2px)}.pack b{font-size:20px;display:block}.pack span{color:var(--mut);font-size:13px}.pack em{font-style:normal;color:var(--ok);font-size:12px;font-weight:700}
 .narrowp{max-width:620px}.hrow{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:8px 0;font-size:14px}
+
+.xlink{display:inline-flex;align-items:center;gap:6px}.xlink .xi{color:var(--teal,#2dd4bf)}.xlink:hover .xi{color:var(--txt)}.minifoot{margin-top:60px}.minifoot a{color:var(--mut)}.minifoot a:hover{color:var(--txt)}
