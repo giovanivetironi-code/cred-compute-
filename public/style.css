@@ -66,7 +66,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0
 .badge.done,.badge.completed{background:rgba(52,211,153,.14);color:var(--ok)}.badge.failed,.badge.refunded{background:rgba(248,113,113,.14);color:var(--err)}.badge.running,.badge.pending{background:rgba(20,212,212,.12);color:var(--acc)}
 .out{white-space:pre-wrap;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:8px;line-height:1.65}
 .job code{color:var(--acc);word-break:break-all}.job img{max-width:100%;border-radius:12px}
-.table{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}table{width:100%;border-collapse:collapse;font-size:15px}
+.table{border:1px solid var(--line);border-radius:var(--r);overflow-x:auto;-webkit-overflow-scrolling:touch}table{width:100%;border-collapse:collapse;font-size:15px}
 th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);background:rgba(255,255,255,.03);padding:14px 20px}
 td{padding:14px 20px;border-top:1px solid var(--line)}tr:hover td{background:rgba(20,212,212,.03)}.r{text-align:right}td.r{font-variant-numeric:tabular-nums}
 .bar{height:8px;background:var(--bg2);border-radius:6px;overflow:hidden;margin:10px 0}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .6s}
@@ -92,3 +92,5 @@ details p{color:var(--mut);margin:0 0 18px}
 .xlink{display:inline-flex;align-items:center;gap:6px}.xlink .xi{color:var(--acc)}.xlink:hover .xi{color:var(--txt)}.minifoot{margin-top:60px}.minifoot a{color:var(--mut)}.minifoot a:hover{color:var(--txt)}
 
 .nf{text-align:center;padding:100px 20px 40px}.nf img{border-radius:20px}.nfcode{font-size:72px;font-weight:800;color:var(--acc);margin:16px 0 0}.nf h1{margin:0 0 8px}
+
+@media (max-width:480px){table{font-size:13px}th,td{padding-left:10px!important;padding-right:10px!important}}

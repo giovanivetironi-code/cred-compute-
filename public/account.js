@@ -16,7 +16,7 @@ function render(a) {
     return `<div class="job"><div class="jh"><b>${esc(runs[r.service]?.label || r.service)}</b><span class="badge ${esc(r.status)}">${esc(r.status)}</span><span class="mut">${r.cost_cents / 100} credits · ${new Date(r.created_at).toLocaleString()}</span></div>${r.prompt ? `<div class="mut">“${esc(r.prompt.slice(0, 200))}”</div>` : ''}${body}</div>`; }).join('') : 'No runs yet.';
   clearTimeout(timer); if (a.runs.some(r => r.status === 'running') || q.get('paid')) timer = setTimeout(load, 3000);
 }
-async function load() { const a = await api('/api/account'); if (a.ok) render(a); else show(flags.login ? 'acct-login' : 'acct-off'); }
+async function load() { const a = await api('/api/account'); if (a.ok && a.signedIn !== false) render(a); else show(flags.login ? 'acct-login' : 'acct-off'); }
 async function init() {
   [flags, { runs }] = await Promise.all([api('/api/account/flags'), api('/api/config')]);
   if (!flags.accounts || !flags.login) { $('acct-off-msg').textContent = 'Card accounts are being set up and will open soon. Until then, you can try the wallet app on testnet below.'; return show('acct-off'); }

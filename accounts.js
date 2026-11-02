@@ -73,6 +73,8 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
   app.post('/api/auth/logout', wrap(async (req, res) => { const t = cookie(req).cc_session; if (t && enabled()) await q('DELETE FROM sessions WHERE token_hash=$1', [sha(t)]);
     res.setHeader('Set-Cookie', 'cc_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'); res.json({ ok: true }); }));
 
+  // Signed-out visitors get a quiet 200 instead of a 401 (avoids console errors on every page load).
+  app.get('/api/account', (req, res, next) => enabled() && !cookie(req).cc_session ? res.json({ signedIn: false }) : next());
   app.get('/api/account', auth, wrap(async (req, res) => {
     const runs = (await q('SELECT id, service, prompt, status, result, error, cost_cents, created_at, finished_at FROM runs WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20', [req.user.id])).rows;
     const ledger = (await q('SELECT delta_cents, kind, created_at FROM ledger WHERE user_id=$1 ORDER BY id DESC LIMIT 30', [req.user.id])).rows;
