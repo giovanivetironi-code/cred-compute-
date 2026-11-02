@@ -28,7 +28,7 @@ module.exports = (app, ctx) => {
   (async () => { await ctx.ready(); if (!enabled()) return; for (const s of setups) await q(s); console.log('features: ready'); })().catch(e => console.error('features init failed:', e.message));
   const adminExtras = [];
   const html = (res, p, status = 200) => res.status(status).type('html').send(page(p));
-  const labelOf = s => RUNS[s]?.label || ({ duel: 'AI duel', market: 'Marketplace prompt' }[String(s).split(':')[0]] || s);
+  const labelOf = s => RUNS[s]?.label || ({ duel: 'AI duel', market: 'Marketplace prompt', zerosnext: 'Math lab: next 10 zeta zeros' }[String(s).split(':')[0]] || s);
 
   // ---------- 1) Receipts ----------
   function receiptView(r) {
@@ -240,6 +240,71 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
 <p class="mut small">Gift credits are ComputeCred store credit for AI services. They have no cash value and can't be withdrawn. See the <a href="/terms.html">Terms</a>.</p>`, script: '<script src="/gift.js"></script>' });
   }));
   adminExtras.push(async () => ({ gifts: (await q('SELECT g.created_at, u.email sender, g.to_email, g.cents, g.status FROM gifts g JOIN users u ON u.id=g.sender_id ORDER BY g.created_at DESC LIMIT 100')).rows }));
+
+  // ---------- 5) Live math lab (Riemann zeta zeros computed by user runs) ----------
+  const LAB = { block: 10, cents: 10 };
+  setups.push(`CREATE TABLE IF NOT EXISTS lab_zeros (idx integer PRIMARY KEY, t text NOT NULL, residual double precision, user_id integer, run_id text, created_at timestamptz DEFAULT now());
+    CREATE TABLE IF NOT EXISTS lab_reserved (run_id text PRIMARY KEY, last_idx integer NOT NULL, created_at timestamptz DEFAULT now())`);
+  const computeRange = (start, count) => new Promise((ok, bad) => execFile('python3', [path.join(__dirname, 'zeros_range.py'), String(start), String(count)], { timeout: 150_000 }, (e, o) => e ? bad(e) : ok(JSON.parse(o))));
+  async function storeZeros(zs, uid, runId) { let n = 0; for (const z of zs) { if (!(z.residual < 1e-6)) continue;
+    n += (await q('INSERT INTO lab_zeros (idx, t, residual, user_id, run_id) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (idx) DO NOTHING', [z.idx, z.t, z.residual, uid, runId])).rowCount; } return n; }
+  // Classic math runs (first 10/50 zeros) also feed the lab, verified the same way.
+  hooks.afterRun = async (runId, user, service, result) => { if (result?.kind !== 'math' || !result.zeros?.length) return;
+    const v = await computeRange(1, result.zeros.length).catch(() => null); if (v) await storeZeros(v.zeros, user.id, runId); };
+  app.post('/api/lab/run', auth, limit(6, 60_000), wrap(async (req, res) => {
+    const runId = 'lab-' + crypto.randomBytes(8).toString('hex');
+    const ok = await tx(async c => { const d = await c.query('UPDATE users SET balance_cents = balance_cents - $1 WHERE id=$2 AND balance_cents >= $1', [LAB.cents, req.user.id]); if (!d.rowCount) return false;
+      await c.query('INSERT INTO ledger (user_id, delta_cents, kind, ref) VALUES ($1,$2,$3,$4)', [req.user.id, -LAB.cents, 'run', 'run-' + runId]);
+      await c.query("INSERT INTO runs (id, user_id, service, prompt, status, cost_cents) VALUES ($1,$2,'zerosnext','', 'running', $3)", [runId, req.user.id, LAB.cents]); return true; });
+    if (!ok) return res.status(402).json({ error: 'Not enough credits. The lab costs 0.1 credits per run.' });
+    // Reserve the next block of 10 zeros nobody has computed or reserved yet.
+    const start = await tx(async c => { await c.query('SELECT pg_advisory_xact_lock(424242)');
+      const m = (await c.query('SELECT GREATEST((SELECT COALESCE(MAX(idx),0) FROM lab_zeros), (SELECT COALESCE(MAX(last_idx),0) FROM lab_reserved)) m')).rows[0].m;
+      await c.query('INSERT INTO lab_reserved (run_id, last_idx) VALUES ($1,$2)', [runId, Number(m) + LAB.block]); return Number(m) + 1; }); const t0 = Date.now();
+    res.json({ runId, cost: LAB.cents / 100, range: [start, start + LAB.block - 1] });
+    try { const v = await computeRange(start, LAB.block); const added = await storeZeros(v.zeros, req.user.id, runId);
+      await finishRun(runId, { result: { kind: 'math', model: 'mpmath', zeros: v.zeros.map(z => Number(z.t)), range: [start, start + LAB.block - 1], verified: added, seconds: v.seconds, method: v.method } }, t0); }
+    catch (e) { await q('UPDATE runs SET error=$2 WHERE id=$1', [runId, String(e.message).slice(0, 200)]); await refundRun(runId, 'run failed'); }
+  }));
+  app.post('/api/profile', auth, limit(10, 60_000), wrap(async (req, res) => {
+    const name = clean(req.body?.displayName, 30); if (name && (filtered(name) || !/^@?[\p{L}\p{N} _.'-]{2,30}$/u.test(name))) return res.status(400).json({ error: 'Use 2–30 letters, numbers or an @handle, no links or rude words.' });
+    await q('UPDATE users SET display_name=$2, public_name=$3 WHERE id=$1', [req.user.id, name || null, !!req.body?.public && !!name]); res.json({ ok: true });
+  }));
+  async function labStats() {
+    const [k, recent, top, pts] = await Promise.all([
+      q('SELECT COUNT(*) n, MAX(idx) maxidx, COUNT(DISTINCT user_id) users FROM lab_zeros'),
+      q("SELECT z.idx, z.t, z.residual, z.run_id, z.created_at, CASE WHEN u.public_name THEN u.display_name END who FROM lab_zeros z LEFT JOIN users u ON u.id=z.user_id ORDER BY z.created_at DESC, z.idx DESC LIMIT 12"),
+      q("SELECT CASE WHEN u.public_name THEN u.display_name ELSE 'Anonymous' END who, COUNT(*) n FROM lab_zeros z LEFT JOIN users u ON u.id=z.user_id GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
+      q('SELECT idx, t FROM lab_zeros ORDER BY idx LIMIT 2000')]);
+    const maxT = pts.rows.length ? Math.max(...pts.rows.map(p => Number(p.t))) : 0;
+    return { count: Number(k.rows[0].n), maxIdx: k.rows[0].maxidx, contributors: Number(k.rows[0].users), maxT, recent: recent.rows, top: top.rows, points: pts.rows.map(p => [p.idx, Number(p.t)]) };
+  }
+  app.get('/api/lab', limit(60, 60_000), wrap(async (req, res) => res.json(enabled() ? await labStats() : { count: 0 })));
+  app.get('/lab', limit(60, 60_000), wrap(async (req, res) => {
+    const st = enabled() ? await labStats() : { count: 0, points: [], recent: [], top: [], maxT: 0, contributors: 0 };
+    const P = st.points, W = 1000, H = 360, pad = 44; const maxI = P.length ? P[P.length - 1][0] : 1, maxT = st.maxT || 1;
+    const strip = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Zeta zeros plotted in the critical strip, all on the line real part one half">
+      <rect x="${pad}" y="20" width="${W - 2 * pad}" height="${H - 60}" fill="rgba(20,212,212,.04)" stroke="rgba(148,190,255,.2)"/>
+      <line x1="${W / 2}" y1="20" x2="${W / 2}" y2="${H - 40}" stroke="#14d4d4" stroke-dasharray="6 6" stroke-opacity=".6"/>
+      ${P.map(([, t]) => `<circle cx="${W / 2}" cy="${(H - 40 - (t / maxT) * (H - 70)).toFixed(1)}" r="3" fill="#14d4d4"/>`).join('')}
+      <text x="${pad}" y="${H - 18}" fill="#93a6c4" font-size="20">Re(s) = 0</text><text x="${W / 2 - 40}" y="${H - 18}" fill="#14d4d4" font-size="20">Re(s) = ½</text><text x="${W - pad - 60}" y="${H - 18}" fill="#93a6c4" font-size="20">Re(s) = 1</text>
+      <text x="${pad + 6}" y="38" fill="#93a6c4" font-size="20">t up to ${maxT.toFixed(2)}</text></svg>`;
+    const curve = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Height t of the nth zero versus n">
+      <line x1="${pad}" y1="${H - 40}" x2="${W - 20}" y2="${H - 40}" stroke="rgba(148,190,255,.3)"/><line x1="${pad}" y1="20" x2="${pad}" y2="${H - 40}" stroke="rgba(148,190,255,.3)"/>
+      ${P.map(([i, t]) => `<circle cx="${(pad + (i / maxI) * (W - pad - 30)).toFixed(1)}" cy="${(H - 40 - (t / maxT) * (H - 70)).toFixed(1)}" r="2.5" fill="#3b82f6"/>`).join('')}
+      <text x="${W - 140}" y="${H - 18}" fill="#93a6c4" font-size="20">zero number n →</text><text x="${pad + 6}" y="38" fill="#93a6c4" font-size="20">height t</text></svg>`;
+    html(res, { title: 'Live math lab', desc: `ComputeCred users have computed and verified ${st.count} non-trivial zeros of the Riemann zeta function.`, url: '/lab', body: `
+<div class="eyebrow">Live math lab</div><h1>Riemann zeta zeros, computed by our users</h1>
+<p class="sub">Each lab run computes the next 10 non-trivial zeros nobody has computed here yet, using <a href="https://mpmath.org" target="_blank" rel="noopener">mpmath</a>, then checks each one by evaluating |ζ(½ + it)| at the result. Only zeros that pass the check are shown.</p>
+<div class="lkpis"><div class="kpi"><span class="mut">Zeros verified</span><b>${st.count.toLocaleString()}</b></div><div class="kpi"><span class="mut">Highest zero #</span><b>${st.maxIdx ?? '—'}</b></div><div class="kpi"><span class="mut">Highest t</span><b>${st.maxT ? st.maxT.toFixed(2) : '—'}</b></div><div class="kpi"><span class="mut">Contributors</span><b>${st.contributors}</b></div></div>
+<div class="panel" id="labbox"><p class="mut">Loading…</p></div>
+<div class="cards2" style="margin-top:20px"><div class="panel"><h3>On the critical line</h3>${strip}<p class="mut small">Every computed zero sits on Re(s) = ½, as expected. Billions of zeros have been checked by mathematicians; this lab is a demonstration, not a proof.</p></div>
+<div class="panel"><h3>Height of the nth zero</h3>${curve}<p class="mut small">The zeros get denser as t grows, roughly like (t/2π)·log(t/2π).</p></div></div>
+<div class="cards2" style="margin-top:20px"><div class="panel"><h3>Recent finds</h3><div class="table"><table><thead><tr><th>#</th><th>t</th><th class="r">|ζ(½+it)|</th><th>By</th></tr></thead><tbody>
+${st.recent.map(z => `<tr><td>${z.idx}</td><td class="mono">${esc(z.t)}</td><td class="r mono">${Number(z.residual).toExponential(1)}</td><td>${z.run_id ? `<a href="/receipt/${esc(z.run_id)}">${esc(z.who || 'Anonymous')}</a>` : esc(z.who || 'Anonymous')}</td></tr>`).join('') || '<tr><td colspan="4">No zeros yet. Run the lab to compute the first ones.</td></tr>'}</tbody></table></div></div>
+<div class="panel"><h3>Top contributors</h3><div class="table"><table><thead><tr><th>Name</th><th class="r">Zeros</th></tr></thead><tbody>${st.top.map(t => `<tr><td>${esc(t.who)}</td><td class="r">${t.n}</td></tr>`).join('') || '<tr><td colspan="2">Nobody yet.</td></tr>'}</tbody></table></div><p class="mut small">Names are shown only for people who opt in.</p></div></div>
+<p class="mut small" style="margin-top:20px">This lab does not prove or disprove the Riemann Hypothesis. It computes known kinds of zeros with standard numerical methods and checks them.</p>`, script: '<script src="/lab.js"></script>' });
+  }));
 
   return { page, html, setups, optAuth, adminOnly, esc, clean, filtered, labelOf };
 };
