@@ -4,7 +4,7 @@
   if (signed) { $('mpub-off').hidden = true; $('mform').hidden = false; if (data.myEarnings) $('mearn').textContent = `You've earned ${data.myEarnings} credits from your prompts.`; }
   const draw = () => { const c = $('mcat').value; const list = data.prompts.filter(p => !c || p.category === c);
     $('mlist').innerHTML = list.length ? list.map(p => `<div class="mcard"><span class="pill" style="align-self:flex-start">${esc(p.categoryLabel)}</span><h3 style="margin:4px 0">${esc(p.title)}</h3><p class="mut">${esc(p.description || '')}</p>
-      <div class="mut small">by ${esc(p.creator || 'Anonymous')} · ${p.runs} runs${p.mine ? ' · yours' : ''}</div><div class="row between" style="margin-top:auto"><b>${p.mine ? (p.price - p.markup).toFixed(2) : p.price.toFixed(2)} credits</b>
+      <div class="mut small">by ${esc(p.creator || 'Anonymous')} · ${p.runs} run${p.runs === 1 ? '' : 's'}${p.mine ? ' · yours' : ''}</div><div class="row between" style="margin-top:auto"><b>${p.mine ? (p.price - p.markup).toFixed(2) : p.price.toFixed(2)} credits</b>
       <span><button class="btn sm" data-run="${esc(p.id)}">Run</button>${signed && !p.mine ? ` <button class="btn ghost sm" data-report="${esc(p.id)}" title="Report">⚑</button>` : ''}</span></div></div>`).join('') : '<p class="mut">No prompts here yet. Publish the first one below.</p>'; };
   $('mcat').onchange = draw; draw();
   $('mlist').onclick = async e => { const rp = e.target.closest('[data-report]'); if (rp) { if (!confirm('Report this prompt as inappropriate?')) return; await api(`/api/market/${rp.dataset.report}/report`, {}); return toast('Thanks, we will review it.', 'ok'); }

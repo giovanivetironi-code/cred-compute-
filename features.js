@@ -225,7 +225,7 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
       <circle cx="1050" cy="120" r="260" fill="#14d4d4" fill-opacity=".07"/><image href="data:image/png;base64,${logoB64}" x="90" y="88" width="84" height="84"/>
       <text x="196" y="145" font-family="DejaVu Sans" font-weight="bold" font-size="40" fill="#eaf2ff">Compute<tspan fill="#14d4d4">Cred</tspan></text>
       <text x="90" y="250" font-family="DejaVu Sans" font-size="34" fill="#93a6c4">${esc(g.from_name ? g.from_name + ' sent you' : 'You received')}</text>
-      <text x="90" y="370" font-family="DejaVu Sans" font-weight="bold" font-size="120" fill="url(#ac)">${g.cents / 100} AI credits</text>
+      <text x="90" y="370" font-family="DejaVu Sans" font-weight="bold" font-size="120" fill="url(#ac)">${g.cents / 100} AI credit${g.cents === 100 ? '' : 's'}</text>
       ${msg.map((l, i) => `<text x="90" y="${440 + i * 44}" font-family="DejaVu Sans" font-style="italic" font-size="32" fill="#eaf2ff">${esc(l)}</text>`).join('')}
       <text x="90" y="555" font-family="DejaVu Sans" font-size="24" fill="#93a6c4">computecred.ai · prepaid credits for AI · no cash value</text></svg>`;
     const png = await require('sharp')(Buffer.from(svg)).png().toBuffer();
@@ -234,7 +234,7 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
   app.get('/gift/:id', limit(60, 60_000), wrap(async (req, res) => {
     const g = enabled() && (await q('SELECT id, to_email, cents, message, from_name, status FROM gifts WHERE id=$1', [String(req.params.id).slice(0, 20)])).rows[0];
     if (!g) return html(res, { title: 'Gift not found', desc: 'This gift link is not valid.', noindex: true, body: '<h1>Gift not found</h1><p class="mut">Check the link in your email.</p>' }, 404);
-    html(res, { title: `${g.cents / 100} AI credits gift`, desc: `${g.from_name || 'Someone'} sent ${g.cents / 100} ComputeCred AI credits.`, og: `/gift/${g.id}/card.png`, url: `/gift/${g.id}`, noindex: true, body: `
+    html(res, { title: `${g.cents / 100} AI credit${g.cents === 100 ? '' : 's'} gift`, desc: `${g.from_name || 'Someone'} sent ${g.cents / 100} ComputeCred AI credits.`, og: `/gift/${g.id}/card.png`, url: `/gift/${g.id}`, noindex: true, body: `
 <div class="eyebrow">Gift</div><h1>You've got AI credits</h1><img class="giftcard" src="/gift/${esc(g.id)}/card.png" alt="ComputeCred gift card for ${g.cents / 100} credits" width="1200" height="630">
 <div class="panel" style="margin-top:20px" id="gbox" data-id="${esc(g.id)}" data-status="${esc(g.status)}" data-to="${esc(mask(g.to_email))}"><p class="mut">Loading…</p></div>
 <p class="mut small">Gift credits are ComputeCred store credit for AI services. They have no cash value and can't be withdrawn. See the <a href="/terms.html">Terms</a>.</p>`, script: '<script src="/gift.js"></script>' });
