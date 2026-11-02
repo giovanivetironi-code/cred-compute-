@@ -90,3 +90,5 @@ details p{color:var(--mut);margin:0 0 18px}
 .narrowp{max-width:620px}.hrow{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:8px 0;font-size:14px}
 
 .xlink{display:inline-flex;align-items:center;gap:6px}.xlink .xi{color:var(--acc)}.xlink:hover .xi{color:var(--txt)}.minifoot{margin-top:60px}.minifoot a{color:var(--mut)}.minifoot a:hover{color:var(--txt)}
+
+.nf{text-align:center;padding:100px 20px 40px}.nf img{border-radius:20px}.nfcode{font-size:72px;font-weight:800;color:var(--acc);margin:16px 0 0}.nf h1{margin:0 0 8px}

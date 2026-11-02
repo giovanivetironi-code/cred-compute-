@@ -8,6 +8,15 @@ const { privateKeyToAccount } = require('viem/accounts'); const { baseSepolia } 
 
 const CONTRACT = process.env.CONTRACT_ADDRESS || '0x744682886a3211554A0CB11bf47B015B0746C021';
 const RPC = process.env.RPC_URL || 'https://sepolia.base.org';
+// Shared product context so every text service can answer questions about ComputeCred accurately.
+const ABOUT = `You are the AI assistant on ComputeCred (https://computecred.ai). Facts about ComputeCred, use only these when asked about it:
+- ComputeCred sells prepaid credits for AI compute. 1 credit = $1 of usage.
+- Credit packs: $5 = 5 credits, $10 = 10 credits, $25 = 26 credits, $50 = 53 credits.
+- Services: AI chat and Q&A, writing (posts, emails), research summaries, image generation, coding help, and a math lab that computes Riemann zeta zeros. Each run costs a small number of credits shown on the site.
+- Users sign in with a one-time email link (no password). Payments are processed by Stripe Checkout.
+- A related CRED token exists only as a testnet demo on Base Sepolia; it is non-transferable, trading is disabled, and it has no monetary value. Never describe credits or CRED as an investment, never promise returns or price gains.
+- Official X account: @ComputeCred (https://x.com/ComputeCred). Website: computecred.ai.
+If asked something about ComputeCred not covered here (e.g. company details, refunds specifics), say you are not sure and point to the Terms page or @ComputeCred. Otherwise just help with the user's request.`;
 // Prices in CRED (1 CRED = $1). Costs from docs.x.ai/developers/pricing (Oct 2026); see PLAN.md.
 const RUNS = {
   chat:     { cost: 0.25, label: 'AI chat / Q&A',     kind: 'text',  maxTokens: 8000,  maxChars: 4000,
@@ -107,7 +116,7 @@ async function execute(type, prompt, runId) {
     } else {
       const p = getProvider();
       job.result = spec.kind === 'image' ? await p.image({ prompt: prompt, service: job.type })
-        : await p.text({ system: spec.system, prompt: prompt, maxTokens: spec.maxTokens, service: job.type });
+        : await p.text({ system: ABOUT + '\n\nTask: ' + spec.system, prompt: prompt, maxTokens: spec.maxTokens, service: job.type });
       job.provider = p.name;
       if (job.result.kind === 'image' && !job.result.demo && (job.result.url || job.result.b64)) {
         const buf = job.result.b64 ? Buffer.from(job.result.b64, 'base64') : Buffer.from(await (await fetch(job.result.url)).arrayBuffer());
@@ -162,5 +171,6 @@ app.get('/api/jobs', (req, res) => {
 });
 console.log('AI provider:', getProvider().name); // name only, never the key
 require('./accounts')(app, { RUNS, execute, db, limit });
+app.use((req, res) => { if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' }); res.status(404).sendFile(path.join(__dirname, 'public', '404.html')); });
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () => console.log(`CRED demo on :${PORT} (minter ${account.address})`));
