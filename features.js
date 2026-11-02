@@ -162,5 +162,84 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
     res.json(out);
   }));
 
+  // ---------- 4) Giftable credits (email claim links) ----------
+  const GIFT = { minCents: 100, maxCents: 2500, perDay: 5, dayMaxCents: 5000, expireDays: 30 };
+  setups.push(`CREATE TABLE IF NOT EXISTS gifts (id text PRIMARY KEY, sender_id integer REFERENCES users(id), to_email text NOT NULL, cents integer NOT NULL CHECK (cents > 0), message text,
+    from_name text, token_hash text NOT NULL, status text NOT NULL DEFAULT 'sent', claimed_by integer, created_at timestamptz DEFAULT now(), claimed_at timestamptz)`);
+  const mask = e => { const [u, d] = String(e).split('@'); return (u.length <= 2 ? u[0] + '*' : u[0] + '***' + u.slice(-1)) + '@' + d; };
+  async function expireGifts() { const old = (await q(`UPDATE gifts SET status='expired' WHERE status='sent' AND created_at < now() - interval '${GIFT.expireDays} days' RETURNING id, sender_id, cents`)).rows;
+    for (const g of old) await credit(g.sender_id, g.cents, 'gift-return', 'giftret-' + g.id, { gift: g.id }); }
+  async function sendMail(to, subject, html) {
+    if (!process.env.RESEND_API_KEY) return false;
+    const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({ from: process.env.EMAIL_FROM || 'ComputeCred <login@computecred.ai>', to, subject, html }) });
+    if (!r.ok) console.error('gift email failed', r.status); return r.ok;
+  }
+  app.post('/api/gifts', auth, limit(5, 60_000), wrap(async (req, res) => {
+    const to = String(req.body?.email || '').trim().toLowerCase(); const cents = Math.round(Number(req.body?.credits) * 100);
+    const message = clean(req.body?.message, 140), fromName = clean(req.body?.fromName, 40);
+    if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/.test(to)) return res.status(400).json({ error: 'Enter a valid recipient email.' });
+    if (to === req.user.email) return res.status(400).json({ error: "You can't gift credits to yourself." });
+    if (!(cents >= GIFT.minCents && cents <= GIFT.maxCents)) return res.status(400).json({ error: 'Gifts must be between 1 and 25 credits.' });
+    if ((message && filtered(message)) || (fromName && filtered(fromName))) return res.status(400).json({ error: 'Please remove links or inappropriate words from the message.' });
+    const day = (await q("SELECT COUNT(*) n, COALESCE(SUM(cents),0) c FROM gifts WHERE sender_id=$1 AND created_at > now() - interval '1 day'", [req.user.id])).rows[0];
+    if (Number(day.n) >= GIFT.perDay || Number(day.c) + cents > GIFT.dayMaxCents) return res.status(429).json({ error: 'Daily gift limit reached (5 gifts or 50 credits per day).' });
+    const id = crypto.randomBytes(6).toString('base64url'), tok = crypto.randomBytes(18).toString('base64url');
+    const ok = await tx(async c => { const d = await c.query('UPDATE users SET balance_cents = balance_cents - $1 WHERE id=$2 AND balance_cents >= $1', [cents, req.user.id]); if (!d.rowCount) return false;
+      await c.query('INSERT INTO ledger (user_id, delta_cents, kind, ref, meta) VALUES ($1,$2,$3,$4,$5)', [req.user.id, -cents, 'gift-sent', 'gift-' + id, JSON.stringify({ to: mask(to) })]);
+      await c.query('INSERT INTO gifts (id, sender_id, to_email, cents, message, from_name, token_hash) VALUES ($1,$2,$3,$4,$5,$6,$7)', [id, req.user.id, to, cents, message || null, fromName || null, sha(tok)]); return true; });
+    if (!ok) return res.status(402).json({ error: 'Not enough credits for this gift.' });
+    const link = `${BASE()}/gift/${id}?c=${tok}`; const amt = cents / 100;
+    const mailed = await sendMail(to, `${fromName || 'Someone'} sent you ${amt} ComputeCred AI credits`,
+      `<div style="font-family:Arial,sans-serif;max-width:520px"><img src="${BASE()}/gift/${id}/card.png" alt="ComputeCred gift card" width="520" style="max-width:100%;border-radius:12px">
+       <p>${esc(fromName || 'A ComputeCred user')} sent you <b>${amt} AI credits</b> on ComputeCred.</p>${message ? `<p style="color:#555">&ldquo;${esc(message)}&rdquo;</p>` : ''}
+       <p><a href="${link}" style="background:#14d4d4;color:#032230;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Claim your credits</a></p>
+       <p style="color:#888;font-size:12px">Sign in with this email address to claim. Unclaimed gifts return to the sender after ${GIFT.expireDays} days. Credits are store credit for AI services with no cash value.</p></div>`);
+    res.json({ id, credits: amt, emailed: mailed, shareUrl: `${BASE()}/gift/${id}` });
+  }));
+  app.get('/api/gifts', auth, limit(60, 60_000), wrap(async (req, res) => { await expireGifts();
+    res.json((await q('SELECT id, to_email, cents, message, status, created_at, claimed_at FROM gifts WHERE sender_id=$1 ORDER BY created_at DESC LIMIT 30', [req.user.id])).rows.map(g => ({ ...g, to_email: mask(g.to_email), credits: g.cents / 100 })));
+  }));
+  app.post('/api/gifts/:id/cancel', auth, limit(10, 60_000), wrap(async (req, res) => {
+    const g = (await q("UPDATE gifts SET status='canceled' WHERE id=$1 AND sender_id=$2 AND status='sent' RETURNING id, cents", [String(req.params.id), req.user.id])).rows[0];
+    if (!g) return res.status(409).json({ error: 'This gift was already claimed or canceled.' });
+    await credit(req.user.id, g.cents, 'gift-return', 'giftret-' + g.id, { gift: g.id, canceled: true }); res.json({ returned: g.cents / 100 });
+  }));
+  app.post('/api/gifts/:id/claim', auth, limit(10, 60_000), wrap(async (req, res) => {
+    await expireGifts(); const g = (await q('SELECT * FROM gifts WHERE id=$1', [String(req.params.id)])).rows[0];
+    const tok = String(req.body?.token || ''); if (!g || !tok || sha(tok) !== g.token_hash) return res.status(404).json({ error: 'Gift not found or link invalid.' });
+    if (g.status !== 'sent') return res.status(409).json({ error: `This gift was already ${g.status}.` });
+    if (g.to_email !== req.user.email) return res.status(403).json({ error: `This gift was sent to ${mask(g.to_email)}. Sign in with that email to claim it.` });
+    const u = await q("UPDATE gifts SET status='claimed', claimed_by=$2, claimed_at=now() WHERE id=$1 AND status='sent' RETURNING id", [g.id, req.user.id]); if (!u.rowCount) return res.status(409).json({ error: 'Already claimed.' });
+    await credit(req.user.id, g.cents, 'gift-received', 'giftrcv-' + g.id, { gift: g.id }); res.json({ claimed: g.cents / 100 });
+  }));
+  let logoB64 = null;
+  app.get('/gift/:id/card.png', limit(60, 60_000), wrap(async (req, res) => {
+    const g = enabled() && (await q('SELECT id, cents, message, from_name, status FROM gifts WHERE id=$1', [String(req.params.id).slice(0, 20)])).rows[0]; if (!g) return res.status(404).end();
+    logoB64 = logoB64 || require('fs').readFileSync(path.join(__dirname, 'public', 'images', 'icon-180.png')).toString('base64');
+    const wrapTxt = (t, n) => { const w = String(t).split(/\s+/); const lines = ['']; for (const x of w) { if ((lines.at(-1) + ' ' + x).trim().length > n) lines.push(x); else lines[lines.length - 1] = (lines.at(-1) + ' ' + x).trim(); } return lines.slice(0, 2); };
+    const msg = g.message ? wrapTxt('“' + g.message + '”', 52) : [];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#06142b"/><stop offset="1" stop-color="#0b2a52"/></linearGradient>
+      <linearGradient id="ac" x1="0" x2="1"><stop offset="0" stop-color="#14d4d4"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs>
+      <rect width="1200" height="630" fill="url(#bg)"/><rect x="40" y="40" width="1120" height="550" rx="36" fill="none" stroke="#14d4d4" stroke-opacity=".45" stroke-width="3"/>
+      <circle cx="1050" cy="120" r="260" fill="#14d4d4" fill-opacity=".07"/><image href="data:image/png;base64,${logoB64}" x="90" y="88" width="84" height="84"/>
+      <text x="196" y="145" font-family="DejaVu Sans" font-weight="bold" font-size="40" fill="#eaf2ff">Compute<tspan fill="#14d4d4">Cred</tspan></text>
+      <text x="90" y="250" font-family="DejaVu Sans" font-size="34" fill="#93a6c4">${esc(g.from_name ? g.from_name + ' sent you' : 'You received')}</text>
+      <text x="90" y="370" font-family="DejaVu Sans" font-weight="bold" font-size="120" fill="url(#ac)">${g.cents / 100} AI credits</text>
+      ${msg.map((l, i) => `<text x="90" y="${440 + i * 44}" font-family="DejaVu Sans" font-style="italic" font-size="32" fill="#eaf2ff">${esc(l)}</text>`).join('')}
+      <text x="90" y="555" font-family="DejaVu Sans" font-size="24" fill="#93a6c4">computecred.ai · prepaid credits for AI · no cash value</text></svg>`;
+    const png = await require('sharp')(Buffer.from(svg)).png().toBuffer();
+    res.set('Cache-Control', 'public, max-age=300').type('png').send(png);
+  }));
+  app.get('/gift/:id', limit(60, 60_000), wrap(async (req, res) => {
+    const g = enabled() && (await q('SELECT id, to_email, cents, message, from_name, status FROM gifts WHERE id=$1', [String(req.params.id).slice(0, 20)])).rows[0];
+    if (!g) return html(res, { title: 'Gift not found', desc: 'This gift link is not valid.', noindex: true, body: '<h1>Gift not found</h1><p class="mut">Check the link in your email.</p>' }, 404);
+    html(res, { title: `${g.cents / 100} AI credits gift`, desc: `${g.from_name || 'Someone'} sent ${g.cents / 100} ComputeCred AI credits.`, og: `/gift/${g.id}/card.png`, url: `/gift/${g.id}`, noindex: true, body: `
+<div class="eyebrow">Gift</div><h1>You've got AI credits</h1><img class="giftcard" src="/gift/${esc(g.id)}/card.png" alt="ComputeCred gift card for ${g.cents / 100} credits" width="1200" height="630">
+<div class="panel" style="margin-top:20px" id="gbox" data-id="${esc(g.id)}" data-status="${esc(g.status)}" data-to="${esc(mask(g.to_email))}"><p class="mut">Loading…</p></div>
+<p class="mut small">Gift credits are ComputeCred store credit for AI services. They have no cash value and can't be withdrawn. See the <a href="/terms.html">Terms</a>.</p>`, script: '<script src="/gift.js"></script>' });
+  }));
+  adminExtras.push(async () => ({ gifts: (await q('SELECT g.created_at, u.email sender, g.to_email, g.cents, g.status FROM gifts g JOIN users u ON u.id=g.sender_id ORDER BY g.created_at DESC LIMIT 100')).rows }));
+
   return { page, html, setups, optAuth, adminOnly, esc, clean, filtered, labelOf };
 };

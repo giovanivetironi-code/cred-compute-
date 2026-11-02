@@ -18,6 +18,7 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
     await q(`CREATE TABLE IF NOT EXISTS users (id serial PRIMARY KEY, email text UNIQUE NOT NULL, balance_cents integer NOT NULL DEFAULT 0 CHECK (balance_cents >= 0), created_at timestamptz DEFAULT now());
       CREATE TABLE IF NOT EXISTS ledger (id serial PRIMARY KEY, user_id integer REFERENCES users(id), delta_cents integer NOT NULL, kind text NOT NULL, ref text UNIQUE, meta jsonb, created_at timestamptz DEFAULT now());
       CREATE TABLE IF NOT EXISTS login_tokens (token_hash text PRIMARY KEY, email text NOT NULL, expires_at timestamptz NOT NULL, used boolean DEFAULT false);
+      ALTER TABLE login_tokens ADD COLUMN IF NOT EXISTS next text;
       CREATE TABLE IF NOT EXISTS sessions (token_hash text PRIMARY KEY, user_id integer REFERENCES users(id), expires_at timestamptz NOT NULL);
       CREATE TABLE IF NOT EXISTS runs (id text PRIMARY KEY, user_id integer REFERENCES users(id), service text, prompt text, status text, result jsonb, error text, cost_cents integer, created_at timestamptz DEFAULT now(), finished_at timestamptz);
       ALTER TABLE runs ADD COLUMN IF NOT EXISTS model text; ALTER TABLE runs ADD COLUMN IF NOT EXISTS latency_ms integer; ALTER TABLE runs ADD COLUMN IF NOT EXISTS tokens jsonb;
@@ -61,7 +62,8 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/.test(email)) return res.status(400).json({ error: 'Enter a valid email.' });
     const tok = crypto.randomBytes(24).toString('base64url');
-    await q("INSERT INTO login_tokens (token_hash, email, expires_at) VALUES ($1,$2, now() + interval '20 minutes')", [sha(tok), email]);
+    const next = /^\/(gift|duel|market|lab)(\/[A-Za-z0-9_-]{0,40})?$/.test(String(req.body?.next || '')) ? req.body.next : null;
+    await q("INSERT INTO login_tokens (token_hash, email, expires_at, next) VALUES ($1,$2, now() + interval '20 minutes', $3)", [sha(tok), email, next]);
     const link = `${BASE()}/api/auth/verify?t=${tok}`;
     if (process.env.RESEND_API_KEY) {
       const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: 'Bearer ' + process.env.RESEND_API_KEY, 'content-type': 'application/json' },
@@ -74,12 +76,12 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
   }));
   app.get('/api/auth/verify', wrap(async (req, res) => {
     const t = String(req.query.t || '');
-    const r = (await q("UPDATE login_tokens SET used=true WHERE token_hash=$1 AND NOT used AND expires_at>now() RETURNING email", [sha(t)])).rows[0];
+    const r = (await q("UPDATE login_tokens SET used=true WHERE token_hash=$1 AND NOT used AND expires_at>now() RETURNING email, next", [sha(t)])).rows[0];
     if (!r) return res.redirect('/?login=expired#account');
     const u = (await q('INSERT INTO users (email) VALUES ($1) ON CONFLICT (email) DO UPDATE SET email=EXCLUDED.email RETURNING id', [r.email])).rows[0];
     const s = crypto.randomBytes(32).toString('base64url');
     await q("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1,$2, now() + interval '30 days')", [sha(s), u.id]);
-    res.setHeader('Set-Cookie', `cc_session=${s}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${30 * 86400}`); res.redirect('/#account');
+    res.setHeader('Set-Cookie', `cc_session=${s}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${30 * 86400}`); res.redirect(r.next || '/#account');
   }));
   app.post('/api/auth/logout', wrap(async (req, res) => { const t = cookie(req).cc_session; if (t && enabled()) await q('DELETE FROM sessions WHERE token_hash=$1', [sha(t)]);
     res.setHeader('Set-Cookie', 'cc_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'); res.json({ ok: true }); }));
