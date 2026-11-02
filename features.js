@@ -1,4 +1,4 @@
-// ComputeCred product features: receipts, AI duel, refunds, gifts, math lab, prompt marketplace.
+// ComputeCred product features: receipts, AI duel, gifts, math lab, prompt marketplace.
 // All credits are closed-loop store credit (no cash value). Every endpoint is rate limited.
 const crypto = require('crypto'); const path = require('path'); const { execFile } = require('child_process');
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -129,32 +129,10 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
 <div class="mgrid">${DUEL_CATS.map(table).join('')}</div>`, script: '<script src="/duel.js"></script>' });
   }));
 
-  // ---------- 3) Pay only if you liked it (one-tap refunds) ----------
-  const REFUND = { windowHours: 24, perDay: 3, monthPct: 0.2, monthFloorCents: 100 };
+  // ---------- 3) Satisfaction refunds: REMOVED (abuse risk). Endpoints return 410; old log stays read-only. ----------
   setups.push(`CREATE TABLE IF NOT EXISTS user_refunds (id serial PRIMARY KEY, user_id integer REFERENCES users(id), run_id text UNIQUE, cents integer NOT NULL, reason text, created_at timestamptz DEFAULT now())`);
-  async function refundQuota(uid) {
-    const [d, m, sp] = await Promise.all([q("SELECT COUNT(*) n FROM user_refunds WHERE user_id=$1 AND created_at > now() - interval '1 day'", [uid]),
-      q("SELECT COALESCE(SUM(cents),0) c FROM user_refunds WHERE user_id=$1 AND created_at >= date_trunc('month', now())", [uid]),
-      q("SELECT COALESCE(SUM(cost_cents),0) c FROM runs WHERE user_id=$1 AND status='done' AND created_at >= date_trunc('month', now())", [uid])]);
-    const cap = Math.max(Math.floor(Number(sp.rows[0].c) * REFUND.monthPct), REFUND.monthFloorCents);
-    return { todayLeft: Math.max(0, REFUND.perDay - Number(d.rows[0].n)), monthRefundedCents: Number(m.rows[0].c), monthCapCents: cap };
-  }
-  app.get('/api/refunds/quota', auth, limit(60, 60_000), wrap(async (req, res) => res.json({ ...(await refundQuota(req.user.id)), rules: REFUND })));
-  app.post('/api/runs/:id/refund', auth, limit(10, 60_000), wrap(async (req, res) => {
-    const run = (await q('SELECT * FROM runs WHERE id=$1 AND user_id=$2', [String(req.params.id), req.user.id])).rows[0]; if (!run) return res.status(404).json({ error: 'Run not found.' });
-    if (run.status !== 'done' || run.meta?.userRefund) return res.status(409).json({ error: 'This run was already refunded or did not finish.' });
-    if (Date.now() - new Date(run.created_at) > REFUND.windowHours * 3600e3) return res.status(403).json({ error: 'Refunds are available for 24 hours after a run.' });
-    const cents = run.meta?.baseCents ?? run.cost_cents; // marketplace markup is not refundable
-    const qu = await refundQuota(req.user.id);
-    if (!qu.todayLeft) return res.status(429).json({ error: 'You can refund up to 3 runs per day.' });
-    if (qu.monthRefundedCents + cents > qu.monthCapCents) return res.status(403).json({ error: 'Monthly refund limit reached (20% of this month\'s spend, minimum 1 credit).' });
-    const reason = clean(req.body?.reason, 200);
-    const ins = await q('INSERT INTO user_refunds (user_id, run_id, cents, reason) VALUES ($1,$2,$3,$4) ON CONFLICT (run_id) DO NOTHING RETURNING id', [req.user.id, run.id, cents, reason]);
-    if (!ins.rowCount) return res.status(409).json({ error: 'Already refunded.' });
-    await credit(req.user.id, cents, 'userrefund', 'urefund-' + run.id, { reason });
-    await q(`UPDATE runs SET meta = COALESCE(meta,'{}'::jsonb) || '{"userRefund":true}'::jsonb WHERE id=$1`, [run.id]);
-    res.json({ refunded: cents / 100 });
-  }));
+  const gone = (req, res) => res.status(410).json({ error: 'Refunds for completed runs are no longer available.' });
+  app.all('/api/refunds/quota', gone); app.all('/api/runs/:id/refund', gone);
   app.get('/api/admin/features', adminOnly, limit(30, 60_000), wrap(async (req, res) => {
     const out = {};
     out.refunds = (await q('SELECT r.created_at, u.email, r.run_id, r.cents, r.reason FROM user_refunds r JOIN users u ON u.id=r.user_id ORDER BY r.id DESC LIMIT 100')).rows;
@@ -371,7 +349,7 @@ ${st.recent.map(z => `<tr><td>${z.idx}</td><td class="mono">${esc(z.t)}</td><td 
  <label class="lbl" for="mp">Prompt (use {input} where the user's text goes; kept private)</label><textarea id="mp" rows="5" maxlength="2000" required placeholder="Write a short, friendly cold email for this product: {input}"></textarea>
  <label class="lbl" for="mm">Your markup (0 to 0.5 credits)</label><input id="mm" type="number" min="0" max="0.5" step="0.05" value="0.1">
  <div class="row between" style="margin-top:12px"><span class="mut small">You earn 70% of the markup as store credit each time someone else runs it. No cash payouts yet.</span><button class="btn">Publish</button></div></form></div>
-<p class="mut small" style="margin-top:16px">Prompts are reviewed by an automatic filter and can be reported. ComputeCred may hide any prompt. The markup is not refundable; the AI cost part of a run is.</p>`, script: '<script src="/market.js"></script>' })));
+<p class="mut small" style="margin-top:16px">Prompts are reviewed by an automatic filter and can be reported. ComputeCred may hide any prompt. Credits spent on a run are not refundable, except automatically when a run fails.</p>`, script: '<script src="/market.js"></script>' })));
 
   return { page, html, setups, optAuth, adminOnly, esc, clean, filtered, labelOf };
 };
