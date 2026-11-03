@@ -150,3 +150,4 @@ details p{color:var(--mut);margin:0 0 18px}
 .links a,.navin .btn,.fx-btn{white-space:nowrap}.fx-mob{display:none}
 @media(max-width:1280px){.fx-k kbd{display:none}.links{gap:14px}}
 @media(max-width:900px){.fx-tools{display:none}.fx-mob{display:block}.navin .btn{margin-left:auto}.brand{font-size:16px}}
+[data-theme=light] .pill{color:#0b5c60}[data-theme=light] .ticker{background:#e6eff8}[data-theme=light] .ticker b{color:#0b6f73}
