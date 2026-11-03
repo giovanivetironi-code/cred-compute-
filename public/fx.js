@@ -31,7 +31,9 @@
   const nav = d.querySelector('.navin'); if (nav) { const w = d.createElement('div'); w.className = 'fx-tools';
     const mac = /Mac|iPhone|iPad/.test(navigator.platform);
     w.innerHTML = `<button class="fx-btn fx-k" type="button" aria-label="Search (${mac ? '⌘' : 'Ctrl'} K)"><span aria-hidden="true">⌕</span><kbd>${mac ? '⌘' : 'Ctrl'} K</kbd></button><button class="fx-btn" id="fx-theme" type="button"></button>`;
-    const anchor = nav.querySelector('.btn, .burger'); nav.insertBefore(w, anchor); w.querySelector('.fx-k').onclick = open; w.querySelector('#fx-theme').onclick = toggle; }
+    const anchor = nav.querySelector('.btn, .burger'); nav.insertBefore(w, anchor); w.querySelector('.fx-k').onclick = open; w.querySelector('#fx-theme').onclick = toggle;
+    const L = d.getElementById('links'); if (L) { const a = d.createElement('a'); a.href = '#'; a.className = 'fx-mob'; a.textContent = 'Search'; a.onclick = e => { e.preventDefault(); L.classList.remove('open'); open(); };
+      const b = d.createElement('a'); b.href = '#'; b.className = 'fx-mob'; b.textContent = 'Light / dark theme'; b.onclick = e => { e.preventDefault(); toggle(); }; L.append(a, b); } }
   setTheme(d.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
   // ---------- scroll reveal ----------
   if (!RM && 'IntersectionObserver' in window) { const els = d.querySelectorAll('.sec h2, .card, .pk, .mrow, .fl'); const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('fx-in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -40px 0px' });

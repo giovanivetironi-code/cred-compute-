@@ -147,3 +147,6 @@ details p{color:var(--mut);margin:0 0 18px}
 [data-theme=light] .nav{background:rgba(244,248,252,.8)}[data-theme=light] .banner{background:linear-gradient(90deg,#d5f3f3,#dbe7fb);color:#0b4a52}
 [data-theme=light] .capcount div{background:#e8f6f6}[data-theme=light] .fx-pal{background:rgba(10,25,45,.3)}
 [data-theme=light] input,[data-theme=light] textarea,[data-theme=light] select{background:#fff;color:var(--txt)}
+.links a,.navin .btn,.fx-btn{white-space:nowrap}.fx-mob{display:none}
+@media(max-width:1280px){.fx-k kbd{display:none}.links{gap:14px}}
+@media(max-width:900px){.fx-tools{display:none}.fx-mob{display:block}.navin .btn{margin-left:auto}.brand{font-size:16px}}
