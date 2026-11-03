@@ -34,6 +34,8 @@
   </div>
  </div>
 </header>
+<div class="ticker" aria-label="Live ComputeCred stats"><div class="wrap"><span><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#14d4d4;margin-right:6px"></span>Live</span><span><b id="tk-runs">–</b> AI runs today</span><span><b id="tk-zeros">–</b> zeta zeros verified</span><span><b id="tk-votes">–</b> duel votes</span><a href="/live">See live pulse →</a></div></div>
+<script>fetch('/api/pulse').then(r=>r.json()).then(p=>{for(const[k,v]of[['runs',p.runsToday],['zeros',p.zeros],['votes',p.votes]])document.getElementById('tk-'+k).textContent=Number(v).toLocaleString()}).catch(()=>{})</script>
 <main>
 <section id="services" class="wrap sec"><div class="eyebrow">Services</div><h2>One credit, every AI service.</h2><p class="sub">Choose a service, write your prompt and pay per run. You only pay for what you use, with no subscription.</p>
  <div class="cards" id="svc"></div></section>
@@ -43,7 +45,7 @@
   <div class="step"><b>02</b><h3>Spend on a run</h3><p>Your wallet burns the credits and records a run ID. Credits can't be transferred, so they work like a prepaid card.</p></div>
   <div class="step"><b>03</b><h3>Get your result</h3><p>Our backend sees the burn and runs the job, and the result appears here. If a run fails, the credits are refunded automatically.</p></div>
  </div></section>
-<section id="account" class="wrap sec"><div class="eyebrow">Pay with card</div><h2>Your ComputeCred account</h2><p class="sub">Sign in with your email, buy a credit pack by card and run any AI service. No wallet needed.</p>
+<section id="account" class="wrap sec"><div class="eyebrow">Pay with card</div><h2>Your ComputeCred account</h2><p class="sub">Sign in with your email, buy a credit pack by card and run any AI service. No wallet needed. New accounts get a free welcome credit to try it, and you can <a href="/invite">invite friends</a> for bonus credits.</p>
  <div id="acct-off" class="panel" hidden><h3>Coming soon</h3><p class="mut" id="acct-off-msg">Card payments are being set up. In the meantime, you can use the wallet app below on testnet.</p></div>
  <div id="acct-login" class="panel narrowp" hidden><h3>Sign in or create an account</h3><p class="mut">We'll email you a secure sign-in link. No password needed.</p>
   <form id="loginf" class="row"><input id="email" type="email" required placeholder="you@company.com" aria-label="Email" style="flex:1;min-width:220px"><button class="btn" id="loginb">Email me a link</button></form><div id="loginmsg" class="mut" style="margin-top:10px"></div></div>
@@ -98,7 +100,7 @@
 </main>
 <footer class="foot"><div class="wrap footin">
  <div><a href="#top" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a><p class="mut">Prepaid credits for AI compute.</p></div>
- <div class="fl"><b>Product</b><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#app">App</a></div>
+ <div class="fl"><b>Product</b><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="#app">App</a><a href="/duel">AI Duel</a><a href="/market">Market</a><a href="/lab">Math lab</a><a href="/live">Live pulse</a><a href="/invite">Invite friends</a></div>
  <div class="fl"><b>Resources</b><a href="#transparency">Contract</a><a href="#faq">FAQ</a><a class="xlink" href="https://x.com/ComputeCred" target="_blank" rel="noopener noreferrer" aria-label="ComputeCred on X"><svg class="xi" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>@ComputeCred</a><a href="mailto:support@computecred.ai">support@computecred.ai</a></div>
  <div class="fl"><b>Legal</b><a href="/terms.html">Terms</a><a href="/privacy.html">Privacy</a></div>
 </div><div class="wrap legal mut">© 2026 ComputeCred. Testnet demo running on Base Sepolia. CRED has no monetary value and is not an investment. This is not financial advice.</div></footer>

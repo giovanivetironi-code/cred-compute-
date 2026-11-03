@@ -12,7 +12,7 @@ function page({ title, desc, body, script = '', og = '/images/og.png', url = '',
 <link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="apple-touch-icon" href="/images/icon-180.png"><link rel="stylesheet" href="/style.css"></head><body>
 <nav class="nav"><div class="wrap navin"><a href="/" class="brand"><img src="/images/icon-180.png" alt="ComputeCred">Compute<span>Cred</span></a><div class="links" id="links">${NAV}</div><a href="/#account" class="btn navcta">Get started</a><button class="burger" aria-label="Menu" onclick="document.getElementById('links').classList.toggle('open')">☰</button></div></nav>
 <main class="wrap sec fpage">${body}</main>
-<footer class="foot minifoot"><div class="wrap legal mut"><a href="/">ComputeCred</a> · <a href="/duel">Duel</a> · <a href="/market">Market</a> · <a href="/lab">Math lab</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a class="xlink" href="https://x.com/ComputeCred" target="_blank" rel="noopener noreferrer" aria-label="ComputeCred on X">${XSVG}@ComputeCred</a> · <a href="mailto:support@computecred.ai">support@computecred.ai</a><br>Credits are prepaid store credit for AI services. They have no cash value.</div></footer>
+<footer class="foot minifoot"><div class="wrap legal mut"><a href="/">ComputeCred</a> · <a href="/duel">Duel</a> · <a href="/market">Market</a> · <a href="/lab">Math lab</a> · <a href="/live">Live</a> · <a href="/invite">Invite</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a class="xlink" href="https://x.com/ComputeCred" target="_blank" rel="noopener noreferrer" aria-label="ComputeCred on X">${XSVG}@ComputeCred</a> · <a href="mailto:support@computecred.ai">support@computecred.ai</a><br>Credits are prepaid store credit for AI services. They have no cash value.</div></footer>
 <script src="/ui.js"></script>${script}</body></html>`;
 }
 // Very small content filter for public text (titles, gift messages, prompts on the marketplace).
@@ -158,6 +158,8 @@ ${v.shared ? `${v.prompt ? `<h3>Prompt</h3><div class="out">${esc(v.prompt)}</di
     const message = clean(req.body?.message, 140), fromName = clean(req.body?.fromName, 40);
     if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/.test(to)) return res.status(400).json({ error: 'Enter a valid recipient email.' });
     if (to === req.user.email) return res.status(400).json({ error: "You can't gift credits to yourself." });
+    // Anti-abuse: free welcome/referral credits can't be funneled out via gifts. Senders need a paid purchase first.
+    if (!(await q("SELECT 1 FROM ledger WHERE user_id=$1 AND kind='purchase' LIMIT 1", [req.user.id])).rowCount) return res.status(403).json({ error: 'Gifting unlocks after your first credit pack purchase.' });
     if (!(cents >= GIFT.minCents && cents <= GIFT.maxCents)) return res.status(400).json({ error: 'Gifts must be between 1 and 25 credits.' });
     if ((message && filtered(message)) || (fromName && filtered(fromName))) return res.status(400).json({ error: 'Please remove links or inappropriate words from the message.' });
     const day = (await q("SELECT COUNT(*) n, COALESCE(SUM(cents),0) c FROM gifts WHERE sender_id=$1 AND created_at > now() - interval '1 day'", [req.user.id])).rows[0];

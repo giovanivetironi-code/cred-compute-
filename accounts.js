@@ -78,7 +78,8 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
     const t = String(req.query.t || '');
     const r = (await q("UPDATE login_tokens SET used=true WHERE token_hash=$1 AND NOT used AND expires_at>now() RETURNING email, next", [sha(t)])).rows[0];
     if (!r) return res.redirect('/?login=expired#account');
-    const u = (await q('INSERT INTO users (email) VALUES ($1) ON CONFLICT (email) DO UPDATE SET email=EXCLUDED.email RETURNING id', [r.email])).rows[0];
+    const u = (await q('INSERT INTO users (email) VALUES ($1) ON CONFLICT (email) DO UPDATE SET email=EXCLUDED.email RETURNING id, (xmax = 0) AS is_new', [r.email])).rows[0];
+    if (u.is_new && hooks.onSignup) await hooks.onSignup(u.id, req).catch(e => console.error('onSignup failed:', e.message));
     const s = crypto.randomBytes(32).toString('base64url');
     await q("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1,$2, now() + interval '30 days')", [sha(s), u.id]);
     res.setHeader('Set-Cookie', `cc_session=${s}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${30 * 86400}`); res.redirect(r.next || '/#account');
@@ -133,7 +134,8 @@ module.exports = (app, { RUNS, execute, db, limit }) => {
       const s = ev.data.object;
       if (s.payment_status === 'paid') {
         const p = PACKS[s.metadata?.pack]; const uid = Number(s.metadata?.user_id);
-        if (p && uid && s.amount_total === p.usd * 100) await credit(uid, p.credits * 100, 'purchase', 'stripe-' + s.id, { usd: p.usd, livemode: ev.livemode, pack: s.metadata.pack });
+        if (p && uid && s.amount_total === p.usd * 100) { const fresh = await credit(uid, p.credits * 100, 'purchase', 'stripe-' + s.id, { usd: p.usd, livemode: ev.livemode, pack: s.metadata.pack });
+          if (fresh && hooks.afterPurchase) await hooks.afterPurchase(uid, !!ev.livemode, s.id).catch(e => console.error('afterPurchase failed:', e.message)); }
         else console.error('webhook: pack/amount mismatch', s.id);
       }
     }

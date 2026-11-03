@@ -109,3 +109,8 @@ details p{color:var(--mut);margin:0 0 18px}
 @media (max-width:480px){.proof,.big-proof{grid-template-columns:1fr}}
 .giftf{display:grid;grid-template-columns:2fr 90px 1.2fr 2fr auto;gap:10px}@media (max-width:900px){.giftf{grid-template-columns:1fr 1fr}.giftf #gto,.giftf #gmsg{grid-column:1/-1}}
 .proof .badge{display:inline-block;width:auto}
+.pulsegrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:24px 0}.pk{border:1px solid var(--line);border-radius:14px;padding:16px;background:rgba(20,212,212,.04)}.pk b{display:block;font-size:28px;color:#14d4d4}.pk span{font-size:13px;opacity:.75}
+.spark{display:flex;align-items:flex-end;gap:3px;height:90px;border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0 24px}.spark i{flex:1;background:linear-gradient(#14d4d4,#3b82f6);border-radius:3px 3px 0 0;min-height:4px}
+.feed{list-style:none;padding:0;margin:8px 0 24px}.feed li{padding:8px 0;border-bottom:1px solid var(--line)}.feed .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#14d4d4;margin-right:10px;box-shadow:0 0 8px #14d4d4}
+.ticker{border-bottom:1px solid var(--line);background:rgba(6,20,43,.6);font-size:14px}.ticker .wrap{display:flex;gap:22px;flex-wrap:wrap;padding:10px 20px;align-items:center}.ticker b{color:#14d4d4}.ticker a{margin-left:auto}
+#inv .row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}#inv input{flex:1;min-width:0}
