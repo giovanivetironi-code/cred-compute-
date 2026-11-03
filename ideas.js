@@ -56,4 +56,22 @@ module.exports = (app, ctx) => {
 <div class="menu-paper" id="mn-paper"></div>
 <div class="ctas" style="justify-content:center"><button class="btn ghost" id="mn-share">Copy link to this menu</button><a class="btn" href="/#pricing">See credit packs</a></div>`,
     script: '<script src="/menu.js"></script>' }));
+
+  // ---------- Prompt Nutrition Label: an FDA-style facts panel for any prompt (runs in the browser) ----------
+  app.get('/label', limit(60, 60_000), (req, res) => html(res, { title: 'Prompt Nutrition Label', desc: 'Paste a prompt and get a nutrition-facts label for it: tokens, clarity, ingredients, empty words and what it costs to run. Free, private, in your browser.', url: '/label', body: `
+<div class="eyebrow">New · Prompt Nutrition Label</div><h1>What's actually in your prompt?</h1>
+<p class="sub">Paste any prompt and get a nutrition-facts label: its size, its key ingredients (role, task, format, limits, examples), its "empty words", and a grade from A to F. It updates as you type and runs in your browser, so the prompt stays on your device.</p>
+<div class="lbl-grid"><div class="card" style="padding:18px"><textarea id="lb-in" rows="10" maxlength="40000" style="width:100%" aria-label="Your prompt" placeholder="You are a travel writer. Write a 150-word post about Lisbon for first-time visitors. Use 3 bullet points and end with one tip. Avoid clichés."></textarea>
+<div class="ctas"><button class="btn ghost" id="lb-share">Copy share link</button><a class="btn" href="/#account">Run it on ComputeCred →</a></div><ul id="lb-tips" class="lb-tips"></ul></div>
+<div class="nfl" id="lb-out" aria-live="polite"></div></div>`, script: '<script src="/label.js"></script>' }));
+
+  // ---------- Context Window Ruler: lay any text on a ruler of AI memory sizes ----------
+  app.get('/ruler', limit(60, 60_000), (req, res) => html(res, { title: 'Context Window Ruler', desc: 'How much of an AI model\'s memory does your document fill? Paste text or drop a file and see it measured against 8K to 2M token context windows, in novels, tweets and reading time.', url: '/ruler', body: `
+<div class="eyebrow">New · Context Window Ruler</div><h1>How big is your text to an AI?</h1>
+<p class="sub">AI models can only "hold" a certain amount of text at once, called the context window. Paste text or drop a file and see how much of each window it fills, plus what that means in pages, tweets, novels and reading time. Files are read in your browser and never uploaded.</p>
+<div class="card" style="padding:18px"><textarea id="ru-in" rows="6" style="width:100%" aria-label="Text to measure" placeholder="Paste an article, a contract, a chapter…"></textarea>
+<div class="ctas"><label class="btn ghost" style="cursor:pointer">Choose a .txt or .md file<input type="file" id="ru-file" accept=".txt,.md,.csv,.json,.html,text/*" hidden></label><button class="btn ghost" type="button" id="ru-sample">Try: the US Constitution × 10</button></div>
+<p id="ru-sum" class="ru-sum" aria-live="polite"></p></div>
+<div id="ru-bars" class="ru-bars"></div><div id="ru-eq" class="pulsegrid"></div>
+<p class="mut small">Token counts are estimates (about 4 characters per token for English). Real counts vary by model.</p>`, script: '<script src="/ruler.js"></script>' }));
 };

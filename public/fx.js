@@ -4,7 +4,7 @@
   const CMDS = [['Home', '/', 'Start page'], ['Services', '/#services', 'What you can run'], ['Pricing', '/#pricing', 'Credit packs'], ['Account & sign in', '/#account', 'Email sign-in, balance, buy credits'],
     ['AI Duel', '/duel', 'Two models, one prompt, you vote'], ['Prompt Market', '/market', 'Prompts made by creators'], ['Math lab', '/lab', 'Verified Riemann zeta zeros'],
     ['Prompt Sigil', '/sigil', 'Turn a prompt into an emblem'], ['Time Capsule', '/capsule', 'Seal a message for the future'], ['Compute Menu', '/menu', 'What your budget buys'],
-    ['Live pulse', '/live', 'Real-time anonymous stats'], ['Invite friends', '/invite', 'Bonus credits for referrals'], ['FAQ', '/#faq', 'Common questions'],
+    ['Prompt Nutrition Label', '/label', 'Grade and dissect a prompt'], ['Context Window Ruler', '/ruler', 'Measure text against AI memory'], ['Live pulse', '/live', 'Real-time anonymous stats'], ['Invite friends', '/invite', 'Bonus credits for referrals'], ['FAQ', '/#faq', 'Common questions'],
     ['Terms', '/terms.html', 'Terms of service'], ['Privacy', '/privacy.html', 'Privacy policy'], ['Email support', 'mailto:support@computecred.ai', 'support@computecred.ai'], ['Toggle light / dark theme', '#theme', 'Switch colors']];
   // ---------- theme ----------
   const setTheme = t => { d.documentElement.dataset.theme = t; try { localStorage.cc_theme = t; } catch {} const b = d.getElementById('fx-theme'); if (b) { b.textContent = t === 'light' ? '☾' : '☀'; b.setAttribute('aria-label', t === 'light' ? 'Switch to dark theme' : 'Switch to light theme'); }
@@ -30,7 +30,7 @@
   // ---------- nav buttons ----------
   const nav = d.querySelector('.navin'); if (nav) { const w = d.createElement('div'); w.className = 'fx-tools';
     const mac = /Mac|iPhone|iPad/.test(navigator.platform);
-    w.innerHTML = `<button class="fx-btn fx-k" type="button" aria-label="Search (${mac ? '⌘' : 'Ctrl'} K)"><span aria-hidden="true">⌕</span><kbd>${mac ? '⌘' : 'Ctrl'} K</kbd></button><button class="fx-btn" id="fx-theme" type="button"></button>`;
+    w.innerHTML = `<button class="fx-btn fx-k" type="button" aria-label="Search ${mac ? '⌘' : 'Ctrl'} K"><span aria-hidden="true">⌕</span><kbd>${mac ? '⌘' : 'Ctrl'} K</kbd></button><button class="fx-btn" id="fx-theme" type="button"></button>`;
     const anchor = nav.querySelector('.btn, .burger'); nav.insertBefore(w, anchor); w.querySelector('.fx-k').onclick = open; w.querySelector('#fx-theme').onclick = toggle;
     const L = d.getElementById('links'); if (L) { const a = d.createElement('a'); a.href = '#'; a.className = 'fx-mob'; a.textContent = 'Search'; a.onclick = e => { e.preventDefault(); L.classList.remove('open'); open(); };
       const b = d.createElement('a'); b.href = '#'; b.className = 'fx-mob'; b.textContent = 'Light / dark theme'; b.onclick = e => { e.preventDefault(); toggle(); }; L.append(a, b); } }
