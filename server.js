@@ -177,6 +177,7 @@ console.log('AI provider:', getProvider().name); // name only, never the key
 const acct = require('./accounts')(app, { RUNS, execute, db, limit });
 const feat = require('./features')(app, { ...acct, RUNS, execute, limit, getProvider, ABOUT });
 require('./growth')(app, { ...acct, ...feat, RUNS, limit });
+require('./ideas')(app, { ...acct, ...feat, RUNS, limit });
 app.get('/token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'token.html')));
 app.use((req, res) => { if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' }); res.status(404).sendFile(path.join(__dirname, 'public', '404.html')); });
 const PORT = process.env.PORT || 8787;

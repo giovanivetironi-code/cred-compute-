@@ -114,3 +114,13 @@ details p{color:var(--mut);margin:0 0 18px}
 .feed{list-style:none;padding:0;margin:8px 0 24px}.feed li{padding:8px 0;border-bottom:1px solid var(--line)}.feed .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#14d4d4;margin-right:10px;box-shadow:0 0 8px #14d4d4}
 .ticker{border-bottom:1px solid var(--line);background:rgba(6,20,43,.6);font-size:14px}.ticker .wrap{display:flex;gap:22px;flex-wrap:wrap;padding:10px 20px;align-items:center}.ticker b{color:#14d4d4}.ticker a{margin-left:auto}
 #inv .row{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}#inv input{flex:1;min-width:0}
+/* Creative features: sigil, capsule, menu */
+.sg-wrap{display:flex;justify-content:center;margin:14px 0}.sg-wrap canvas{width:min(100%,420px);height:auto;border-radius:18px;box-shadow:0 10px 40px rgba(20,212,212,.18)}
+.capview{text-align:center;margin:10px 0 24px}.caplock{font-size:64px;margin:16px 0}.capcount{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.capcount div{background:#0b2140;border:1px solid rgba(20,212,212,.3);border-radius:14px;padding:12px 16px;min-width:76px}.capcount b{display:block;font-size:30px;color:#14d4d4}.capcount span{font-size:12px;opacity:.7}
+.capopen{font-size:40px}.capopen blockquote{font-size:18px;text-align:left;max-width:640px;margin:12px auto;padding:18px;border-left:4px solid #14d4d4;background:rgba(20,212,212,.06);border-radius:10px}
+.menu-paper{background:#fbf8f1;color:#10233f;border-radius:16px;padding:26px 22px;margin:18px 0;font-family:Georgia,serif;box-shadow:0 10px 30px rgba(0,0,0,.25)}.menu-paper h2{text-align:center;margin:0 0 4px;letter-spacing:.04em}
+.menu-paper .mut{color:#5a6b80}.mrow{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px dashed #c9c2b0}.mrow>div{flex:0 1 auto}.mrow i{display:block;font-size:14px;color:#4a5a70}.mrow small{font-family:system-ui;font-size:12px;color:#0f8f8f}
+.mrow .dots{flex:1;border-bottom:2px dotted #b8b0a0;min-width:10px}.mp{font-weight:700;white-space:nowrap}.mq{display:flex;align-items:center;gap:6px;font-family:system-ui}.mq button{width:28px;height:28px;border-radius:50%;border:1px solid #10233f;background:#fff;cursor:pointer}.mq button:disabled{opacity:.3}
+.mbill{display:flex;justify-content:space-between;font-size:18px;padding:8px 0}
+@media(max-width:600px){.mrow{flex-wrap:wrap}.mrow .dots{display:none}}
