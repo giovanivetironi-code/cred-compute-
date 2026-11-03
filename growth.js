@@ -42,6 +42,7 @@ module.exports = (app, ctx) => {
     const c = String(req.params.code); if (/^[A-Za-z0-9_-]{8}$/.test(c)) res.setHeader('Set-Cookie', `cc_ref=${c}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${30 * 86400}`);
     res.redirect('/?invited=1#account');
   });
+  app.get('/api/referral', (req, res, next) => !cookie(req).cc_session ? res.json({ signedIn: false }) : next());
   app.get('/api/referral', auth, limit(30, 60_000), wrap(async (req, res) => {
     let code = req.user.ref_code;
     if (!code) { code = crypto.randomBytes(6).toString('base64url'); await q('UPDATE users SET ref_code=$2 WHERE id=$1 AND ref_code IS NULL', [req.user.id, code]); code = (await q('SELECT ref_code FROM users WHERE id=$1', [req.user.id])).rows[0].ref_code; }
