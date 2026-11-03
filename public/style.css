@@ -174,3 +174,12 @@ details p{color:var(--mut);margin:0 0 18px}
 .ru-row.over .ru-track i{background:linear-gradient(90deg,#f87171,#fb923c)}.ru-p{font-weight:700;text-align:right;font-size:14px}.ru-row.over .ru-p{color:var(--err)}
 @media(max-width:600px){.ru-row{grid-template-columns:1fr 80px}.ru-track{grid-column:1/-1;grid-row:2}}
 [data-theme=light] .foot{background:#e9f0f8}
+/* live: holographic globe */
+.holo{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 260px;align-items:center;gap:16px;margin:18px 0;border:1px solid var(--line);border-radius:20px;padding:12px;background:radial-gradient(ellipse at 35% 50%,rgba(20,212,212,.08),transparent 60%)}
+.holo canvas{width:100%;max-width:560px;height:auto;aspect-ratio:1;justify-self:center;touch-action:none;cursor:grab}.holo canvas:active{cursor:grabbing}
+.holo-hud{display:flex;flex-direction:column;gap:4px}.holo-hud b{font-size:48px;line-height:1;color:var(--acc);font-variant-numeric:tabular-nums}
+.livebadge{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}.livebadge.on{color:var(--ok)}
+@media(max-width:760px){.holo{grid-template-columns:1fr}.holo-hud{text-align:center;align-items:center}}
+/* voice */
+.fx-mic{position:absolute;right:12px;top:10px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer;font-size:16px}.fx-box{position:relative}.fx-box input{padding-right:58px}
+.fx-mic.rec{color:#fff;background:var(--err);border-color:var(--err);animation:pulse 1.2s infinite}

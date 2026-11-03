@@ -55,7 +55,7 @@ module.exports = (app, ctx) => {
   // ---------- Live pulse: anonymous aggregates only, cached 60 s ----------
   let cache = { t: 0, v: null };
   async function pulse() {
-    if (Date.now() - cache.t < 60_000 && cache.v) return cache.v;
+    if (Date.now() - cache.t < 15_000 && cache.v) return cache.v;
     if (!enabled()) return { runsToday: 0, runsTotal: 0, zeros: 0, votes: 0, gifts: 0, prompts: 0, recent: [] };
     const one = async (s) => Number((await q(s)).rows[0].n);
     const [runsToday, runsTotal, zeros, votes, gifts, prompts, recent, byHour] = await Promise.all([
@@ -68,10 +68,21 @@ module.exports = (app, ctx) => {
     cache = { t: Date.now(), v: { runsToday, runsTotal, zeros, votes, gifts, prompts, hours, recent: recent.rows.map(r => ({ label: labelOf(r.service), latencyMs: r.latency_ms, at: r.finished_at })) } };
     return cache.v;
   }
+
+  // Real-time stream (Server-Sent Events): one shared 10 s ticker, capped connections, aggregates only.
+  const subs = new Set(), perIp = new Map(); let lastJson = '';
+  setInterval(async () => { if (!subs.size) return; try { const j = JSON.stringify(await pulse()); const msg = j === lastJson ? ': ping\n\n' : `event: pulse\ndata: ${j}\n\n`; lastJson = j;
+    for (const r of subs) { r.write(msg); r.flush?.(); } } catch {} }, 10_000).unref();
+  app.get('/api/pulse/stream', wrap(async (req, res) => { const ip = req.ip || ''; if (subs.size >= 300 || (perIp.get(ip) || 0) >= 4) return res.status(429).json({ error: 'Too many live connections.' });
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+    const j = JSON.stringify(await pulse()); res.write(`retry: 5000\nevent: pulse\ndata: ${j}\n\n`); res.flush?.();
+    subs.add(res); perIp.set(ip, (perIp.get(ip) || 0) + 1); const kill = setTimeout(() => res.end(), 15 * 60_000);
+    req.on('close', () => { clearTimeout(kill); subs.delete(res); const n = (perIp.get(ip) || 1) - 1; n ? perIp.set(ip, n) : perIp.delete(ip); }); }));
   app.get('/api/pulse', limit(60, 60_000), wrap(async (req, res) => { res.setHeader('Cache-Control', 'public, max-age=30'); res.json(await pulse()); }));
   app.get('/live', limit(60, 60_000), wrap(async (req, res) => html(res, { title: 'Live pulse', desc: 'Live, anonymous stats from ComputeCred: AI runs today, zeta zeros verified, duel votes and more.', url: '/live', body: `
 <div class="eyebrow">Live pulse</div><h1>What's happening on ComputeCred right now</h1>
 <p class="sub">Anonymous totals, updated every minute. No prompts, names or emails are ever shown here.</p>
+<div class="holo"><canvas id="globe" width="640" height="640" role="img" aria-label="Rotating globe. Each AI run on ComputeCred sends a pulse across it. Drag to spin."></canvas><div class="holo-hud"><span class="livebadge" id="stream-st">● Connecting…</span><b id="g-runs">–</b><span>AI runs in the last 24 h</span><small class="mut">Drag to spin · pulses are illustrative, no locations are tracked</small></div></div>
 <div class="pulsegrid" id="pg" aria-live="polite"></div>
 <h2 class="h3">AI runs, last 24 hours</h2><div class="spark" id="spark" role="img" aria-label="Runs per hour over the last 24 hours"></div>
 <h2 class="h3">Latest finished runs</h2><ul class="feed" id="feed"></ul>

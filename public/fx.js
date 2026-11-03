@@ -4,7 +4,7 @@
   const CMDS = [['Home', '/', 'Start page'], ['Services', '/#services', 'What you can run'], ['Pricing', '/#pricing', 'Credit packs'], ['Account & sign in', '/#account', 'Email sign-in, balance, buy credits'],
     ['AI Duel', '/duel', 'Two models, one prompt, you vote'], ['Prompt Market', '/market', 'Prompts made by creators'], ['Math lab', '/lab', 'Verified Riemann zeta zeros'],
     ['Prompt Sigil', '/sigil', 'Turn a prompt into an emblem'], ['Time Capsule', '/capsule', 'Seal a message for the future'], ['Compute Menu', '/menu', 'What your budget buys'],
-    ['Prompt Nutrition Label', '/label', 'Grade and dissect a prompt'], ['Context Window Ruler', '/ruler', 'Measure text against AI memory'], ['Live pulse', '/live', 'Real-time anonymous stats'], ['Invite friends', '/invite', 'Bonus credits for referrals'], ['FAQ', '/#faq', 'Common questions'],
+    ['Prompt Nutrition Label', '/label', 'Grade and dissect a prompt'], ['Context Window Ruler', '/ruler', 'Measure text against AI memory'], ['Live pulse', '/live', 'Real-time stats and the compute globe'], ['Invite friends', '/invite', 'Bonus credits for referrals'], ['FAQ', '/#faq', 'Common questions'],
     ['Terms', '/terms.html', 'Terms of service'], ['Privacy', '/privacy.html', 'Privacy policy'], ['Email support', 'mailto:support@computecred.ai', 'support@computecred.ai'], ['Toggle light / dark theme', '#theme', 'Switch colors']];
   // ---------- theme ----------
   const setTheme = t => { d.documentElement.dataset.theme = t; try { localStorage.cc_theme = t; } catch {} const b = d.getElementById('fx-theme'); if (b) { b.textContent = t === 'light' ? '☾' : '☀'; b.setAttribute('aria-label', t === 'light' ? 'Switch to dark theme' : 'Switch to light theme'); }
@@ -15,6 +15,13 @@
   function build() { pal = d.createElement('div'); pal.className = 'fx-pal'; pal.hidden = true; pal.setAttribute('role', 'dialog'); pal.setAttribute('aria-modal', 'true'); pal.setAttribute('aria-label', 'Search ComputeCred');
     pal.innerHTML = '<div class="fx-box"><input type="search" placeholder="Search pages and actions…" aria-label="Search pages and actions" aria-controls="fx-list" autocomplete="off"><ul id="fx-list" role="listbox"></ul><p class="fx-hint"><kbd>↑</kbd><kbd>↓</kbd> move · <kbd>Enter</kbd> open · <kbd>Esc</kbd> close</p></div>';
     d.body.appendChild(pal); inp = pal.querySelector('input'); list = pal.querySelector('ul');
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (SR) { const mic = d.createElement('button'); mic.type = 'button'; mic.className = 'fx-mic'; mic.setAttribute('aria-label', 'Search by voice'); mic.textContent = '🎙';
+      pal.querySelector('.fx-box').appendChild(mic); let rec;
+      mic.onclick = () => { if (rec) return rec.stop(); rec = new SR(); rec.lang = navigator.language || 'en-US'; rec.interimResults = true; mic.classList.add('rec'); inp.placeholder = 'Listening… say "open time capsule" or "dark mode"';
+        rec.onresult = e => { const t = [...e.results].map(r => r[0].transcript).join(' ').toLowerCase().replace(/[.?!]/g, '').trim(); const q = t.replace(/^(open|go to|show( me)?|take me to|navigate to)\s+/, '').replace(/^the\s+/, '');
+          if (/\b(dark|light) (mode|theme)\b|switch theme|toggle theme/.test(t)) { if (e.results[e.results.length - 1].isFinal) { const want = /light/.test(t) ? 'light' : /dark/.test(t) ? 'dark' : null; want ? setTheme(want) : toggle(); close(); } return; }
+          inp.value = q; sel = 0; render(); if (e.results[e.results.length - 1].isFinal && shown.length && q) setTimeout(() => go(0), 350); };
+        rec.onend = rec.onerror = () => { mic.classList.remove('rec'); inp.placeholder = 'Search pages and actions…'; rec = null; }; rec.start(); }; }
     pal.addEventListener('click', e => { if (e.target === pal) close(); const li = e.target.closest('li'); if (li) go(+li.dataset.i); });
     inp.addEventListener('input', () => { sel = 0; render(); });
     inp.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { sel = Math.min(shown.length - 1, sel + 1); render(); e.preventDefault(); } else if (e.key === 'ArrowUp') { sel = Math.max(0, sel - 1); render(); e.preventDefault(); } else if (e.key === 'Enter') go(sel); else if (e.key === 'Escape') close(); }); }
