@@ -183,3 +183,17 @@ details p{color:var(--mut);margin:0 0 18px}
 /* voice */
 .fx-mic{position:absolute;right:12px;top:10px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer;font-size:16px}.fx-box{position:relative}.fx-box input{padding-right:58px}
 .fx-mic.rec{color:#fff;background:var(--err);border-color:var(--err);animation:pulse 1.2s infinite}
+
+.sg-art{width:min(100%,420px);aspect-ratio:1;border-radius:18px;overflow:hidden;box-shadow:0 10px 40px rgba(20,212,212,.18)}.sg-art svg{width:100%;height:100%;display:block}
+.fx-sheet{padding:20px 22px}.fx-sheet h2{margin:0 0 10px;font-size:20px}.fx-sheet h3{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:6px 0}.fx-sheet p{margin:6px 0;font-size:14px}.fx-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}.fx-sheet kbd{margin-right:4px;font-size:12px}
+@media(max-width:600px){.fx-cols{grid-template-columns:1fr}}
+.fx-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--card);border:1px solid var(--acc);color:var(--txt);padding:8px 14px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:210}.fx-toast.on{opacity:1;transform:translate(-50%,0)}
+/* flow planner */
+.flow-tpl,.flow-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.chip{border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}.chip:hover{border-color:var(--acc)}
+.flow-canvas{position:relative;margin:18px 0;padding:24px;border:1px dashed var(--line);border-radius:20px;background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:22px 22px}
+#fl-wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.wire{fill:none;stroke:var(--line);stroke-width:3}.wire-flow{fill:none;stroke:var(--acc);stroke-width:3;stroke-dasharray:6 14;animation:flowdash 1s linear infinite}@keyframes flowdash{to{stroke-dashoffset:-20}}
+.flow-nodes{position:relative;list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:48px}.fnode{width:230px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 10px 30px -14px rgba(0,0,0,.5)}
+.fn-top{display:flex;align-items:center;gap:8px;font-size:14px}.fn-top b{flex:1}.fn-ic{font-size:18px}.fn-cost{font-size:12px;color:var(--acc);font-weight:700}.fnode input{width:100%;margin:8px 0;font-size:13px}
+.fn-ctl{display:flex;gap:6px;justify-content:flex-end}.fn-ctl button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer}.fn-ctl button:disabled{opacity:.3}
+.flow-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+@media(max-width:600px){.flow-nodes{flex-direction:column;align-items:center;gap:40px}.fnode{width:100%}}

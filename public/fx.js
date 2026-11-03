@@ -4,7 +4,7 @@
   const CMDS = [['Home', '/', 'Start page'], ['Services', '/#services', 'What you can run'], ['Pricing', '/#pricing', 'Credit packs'], ['Account & sign in', '/#account', 'Email sign-in, balance, buy credits'],
     ['AI Duel', '/duel', 'Two models, one prompt, you vote'], ['Prompt Market', '/market', 'Prompts made by creators'], ['Math lab', '/lab', 'Verified Riemann zeta zeros'],
     ['Prompt Sigil', '/sigil', 'Turn a prompt into an emblem'], ['Time Capsule', '/capsule', 'Seal a message for the future'], ['Compute Menu', '/menu', 'What your budget buys'],
-    ['Prompt Nutrition Label', '/label', 'Grade and dissect a prompt'], ['Context Window Ruler', '/ruler', 'Measure text against AI memory'], ['Live pulse', '/live', 'Real-time stats and the compute globe'], ['Invite friends', '/invite', 'Bonus credits for referrals'], ['FAQ', '/#faq', 'Common questions'],
+    ['Prompt Nutrition Label', '/label', 'Grade and dissect a prompt'], ['Context Window Ruler', '/ruler', 'Measure text against AI memory'], ['Flow Planner', '/flow', 'Design an AI pipeline and price it'], ['Keyboard shortcuts', '#keys', 'Press ? anytime'], ['Live pulse', '/live', 'Real-time stats and the compute globe'], ['Invite friends', '/invite', 'Bonus credits for referrals'], ['FAQ', '/#faq', 'Common questions'],
     ['Terms', '/terms.html', 'Terms of service'], ['Privacy', '/privacy.html', 'Privacy policy'], ['Email support', 'mailto:support@computecred.ai', 'support@computecred.ai'], ['Toggle light / dark theme', '#theme', 'Switch colors']];
   // ---------- theme ----------
   const setTheme = t => { d.documentElement.dataset.theme = t; try { localStorage.cc_theme = t; } catch {} const b = d.getElementById('fx-theme'); if (b) { b.textContent = t === 'light' ? '☾' : '☀'; b.setAttribute('aria-label', t === 'light' ? 'Switch to dark theme' : 'Switch to light theme'); }
@@ -29,11 +29,28 @@
   function render() { const q = inp.value.trim().toLowerCase(); shown = CMDS.map(c => [score(c, q), c]).filter(x => x[0]).sort((a, b) => b[0] - a[0]).map(x => x[1]);
     list.innerHTML = shown.length ? shown.map((c, i) => `<li role="option" data-i="${i}" aria-selected="${i === sel}" id="fx-o${i}"><b>${esc(c[0])}</b><span>${esc(c[2])}</span></li>`).join('') : '<li class="fx-none">No matches</li>';
     inp.setAttribute('aria-activedescendant', 'fx-o' + sel); list.querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest' }); }
-  function go(i) { const c = shown[i]; if (!c) return; close(); if (c[1] === '#theme') return toggle(); location.href = c[1]; }
+  function go(i) { const c = shown[i]; if (!c) return; close(); if (c[1] === '#theme') return toggle(); if (c[1] === '#keys') return cheat(); location.href = c[1]; }
   let prevFocus; function open() { if (!pal) build(); prevFocus = d.activeElement; pal.hidden = false; inp.value = ''; sel = 0; render(); inp.focus(); }
   function close() { if (pal) pal.hidden = true; prevFocus?.focus?.(); }
   d.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pal && !pal.hidden ? close() : open(); }
     else if (e.key === '/' && !/input|textarea|select/i.test(d.activeElement.tagName) && !d.activeElement.isContentEditable) { e.preventDefault(); open(); } });
+
+  // ---------- Keyboard power-user mode: "?" for the cheat sheet, "g" + key to jump ----------
+  const GO = { h: ['/', 'Home'], a: ['/#account', 'Account'], d: ['/duel', 'AI Duel'], m: ['/market', 'Market'], l: ['/lab', 'Math lab'], s: ['/sigil', 'Prompt Sigil'], c: ['/capsule', 'Time Capsule'],
+    n: ['/menu', 'Compute Menu'], b: ['/label', 'Prompt Label'], r: ['/ruler', 'Context Ruler'], f: ['/flow', 'Flow Planner'], p: ['/live', 'Live pulse'], i: ['/invite', 'Invite'] };
+  let gWait = 0, sheet; const typing = () => /input|textarea|select/i.test(d.activeElement.tagName) || d.activeElement.isContentEditable;
+  function cheat() { if (!sheet) { sheet = d.createElement('div'); sheet.className = 'fx-pal'; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true'); sheet.setAttribute('aria-label', 'Keyboard shortcuts');
+      sheet.innerHTML = `<div class="fx-box fx-sheet"><h2>Keyboard shortcuts</h2><div class="fx-cols"><div><h3>Anywhere</h3><p><kbd>Ctrl/⌘</kbd><kbd>K</kbd> or <kbd>/</kbd> Search</p><p><kbd>?</kbd> This sheet</p><p><kbd>T</kbd> Light / dark theme</p><p><kbd>Esc</kbd> Close</p><p><kbd>J</kbd><kbd>K</kbd> Next / previous section</p></div>
+        <div><h3>Go to: <kbd>G</kbd> then…</h3>${Object.entries(GO).map(([k, [, n]]) => `<p><kbd>${k.toUpperCase()}</kbd> ${n}</p>`).join('')}</div></div><button class="btn ghost" type="button">Close</button></div>`;
+      d.body.appendChild(sheet); sheet.addEventListener('click', e => { if (e.target === sheet || e.target.tagName === 'BUTTON') sheet.hidden = true; }); }
+    sheet.hidden = false; sheet.querySelector('button').focus(); }
+  function hint(t) { let h = d.getElementById('fx-hint'); if (!h) { h = d.createElement('div'); h.id = 'fx-hint'; h.className = 'fx-toast'; h.setAttribute('aria-live', 'polite'); d.body.appendChild(h); } h.textContent = t; h.classList.add('on'); clearTimeout(h._t); h._t = setTimeout(() => h.classList.remove('on'), 1400); }
+  d.addEventListener('keydown', e => { if (e.metaKey || e.ctrlKey || e.altKey || typing() || (pal && !pal.hidden)) return; const k = e.key.toLowerCase();
+    if (e.key === 'Escape' && sheet && !sheet.hidden) { sheet.hidden = true; return; }
+    if (gWait && Date.now() - gWait < 1500) { gWait = 0; if (GO[k]) { e.preventDefault(); hint('→ ' + GO[k][1]); location.href = GO[k][0]; } return; }
+    if (e.key === '?') { e.preventDefault(); cheat(); } else if (k === 'g') { gWait = Date.now(); hint('Go to… (press a letter, ? for list)'); } else if (k === 't') { toggle(); hint('Theme: ' + d.documentElement.dataset.theme); }
+    else if (k === 'j' || k === 'k') { const secs = [...d.querySelectorAll('main h1, main h2, section h2, header h1, .sec > h2')]; if (!secs.length) return; e.preventDefault(); const y = scrollY + 90;
+      const t = k === 'j' ? secs.find(s => s.getBoundingClientRect().top + scrollY > y + 5) : [...secs].reverse().find(s => s.getBoundingClientRect().top + scrollY < y - 5); if (t) t.scrollIntoView({ behavior: RM ? 'auto' : 'smooth', block: 'start' }); } });
   // ---------- nav buttons ----------
   const nav = d.querySelector('.navin'); if (nav) { const w = d.createElement('div'); w.className = 'fx-tools';
     const mac = /Mac|iPhone|iPad/.test(navigator.platform);

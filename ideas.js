@@ -10,11 +10,28 @@ module.exports = (app, ctx) => {
 <div class="eyebrow">New · Prompt Sigil</div><h1>Every prompt has a face.</h1>
 <p class="sub">Type a prompt and watch it become a unique emblem. The same words always draw the same sigil, and one changed letter draws a new one. It runs in your browser, so your words never leave your device.</p>
 <div class="card" style="padding:18px"><textarea id="sg-in" rows="3" maxlength="500" style="width:100%" placeholder="Write a haiku about a lighthouse that learned to code"></textarea>
-<div class="sg-wrap"><canvas id="sg" width="600" height="600" aria-label="Your prompt sigil"></canvas></div>
+<div class="sg-wrap"><div id="sg" class="sg-art" role="img" aria-label="Your prompt sigil"></div></div>
 <p id="sg-name" class="mut" style="text-align:center;font-weight:600"></p>
 <div class="ctas" style="justify-content:center"><button class="btn" id="sg-dl">Download PNG</button><button class="btn ghost" id="sg-share">Copy share link</button><a class="btn ghost" href="/#account">Run this prompt →</a></div></div>
-<p class="mut small">Share links put the prompt in the link after the # sign, which browsers never send to our server.</p>`,
-    script: '<script src="/sigil.js"></script>' }));
+<p class="mut small">Share links carry only the sigil's code, never your prompt. Anyone can see the emblem; nobody can work out the words behind it.</p>`,
+    script: '<script src="/sigil-core.js"></script><script src="/sigil.js"></script>' }));
+  // Shareable sigil by code: prompt is never sent to the server. OG image rendered server-side with sharp.
+  const SC = require('./public/sigil-core.js'), okCode = c => /^[0-9A-Z]{1,7}$/.test(c) && SC.fromCode(c) > 0;
+  app.get('/sigil/s/:code.png', limit(60, 60_000), wrap(async (req, res) => { const c = String(req.params.code).toUpperCase(); if (!okCode(c)) return res.status(404).end();
+    const g = SC.build(SC.fromCode(c)), e = t => String(t).replace(/[&<>]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[x]));
+    const art = SC.svg(g, { size: 560, label: false }).replace('<svg ', '<svg x="40" y="35" ');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"><rect width="1200" height="630" fill="#06142b"/><rect x="30" y="25" width="580" height="580" rx="30" fill="#071526"/>${art}
+      <text x="660" y="150" font-family="DejaVu Sans" font-size="26" fill="#14d4d4" letter-spacing="4">PROMPT SIGIL</text>
+      <text x="660" y="240" font-family="DejaVu Sans" font-weight="bold" font-size="54" fill="#eaf2ff">${e(g.name.split(' ').slice(0, 2).join(' '))}</text><text x="660" y="305" font-family="DejaVu Sans" font-weight="bold" font-size="54" fill="#eaf2ff">${e(g.name.split(' ').slice(2).join(' '))}</text>
+      <text x="660" y="365" font-family="DejaVu Sans" font-size="30" fill="#93a6c4">#${e(g.code)}</text>
+      <text x="660" y="470" font-family="DejaVu Sans" font-size="26" fill="#93a6c4">Every prompt has a face.</text><text x="660" y="510" font-family="DejaVu Sans" font-size="26" fill="#93a6c4">Find yours at computecred.ai/sigil</text></svg>`;
+    res.set('Cache-Control', 'public, max-age=604800, immutable').type('png').send(await require('sharp')(Buffer.from(svg)).png().toBuffer()); }));
+  app.get('/sigil/s/:code', limit(60, 60_000), (req, res) => { const c = String(req.params.code).toUpperCase(); if (!okCode(c)) return res.redirect('/sigil'); const g = SC.build(SC.fromCode(c));
+    html(res, { title: g.name + ' · Prompt Sigil', desc: `Someone's prompt became "${g.name}". Every prompt has a unique emblem. Find yours.`, url: '/sigil/s/' + c, og: '/sigil/s/' + c + '.png', body: `
+<div class="eyebrow">Prompt Sigil · #${c}</div><h1>${esc(g.name)}</h1><p class="sub">This emblem was drawn from someone's prompt. The words stay secret; only the sigil is shared.</p>
+<div class="card" style="padding:18px"><div class="sg-wrap"><div id="sg" class="sg-art" data-code="${c}" role="img" aria-label="${esc(g.name)} sigil"></div></div><p id="sg-name" class="mut" style="text-align:center;font-weight:600"></p>
+<div class="ctas" style="justify-content:center"><button class="btn ghost" id="sg-dl">Download PNG</button><a class="btn" href="/sigil">Make your own →</a></div></div>`,
+      script: '<script src="/sigil-core.js"></script><script src="/sigil.js"></script>' }); });
 
   // ---------- Time Capsule: seal a prompt or note that can't be read until a future date ----------
   app.post('/api/capsule', limit(5, 3600_000), wrap(async (req, res) => {
@@ -74,4 +91,14 @@ module.exports = (app, ctx) => {
 <p id="ru-sum" class="ru-sum" aria-live="polite"></p></div>
 <div id="ru-bars" class="ru-bars"></div><div id="ru-eq" class="pulsegrid"></div>
 <p class="mut small">Token counts are estimates (about 4 characters per token for English). Real counts vary by model.</p>`, script: '<script src="/ruler.js"></script>' }));
+
+  // ---------- Flow Planner: design a multi-step AI pipeline visually and price it before running anything ----------
+  app.get('/flow', limit(60, 60_000), (req, res) => html(res, { title: 'AI Flow Planner', desc: 'Design a multi-step AI pipeline visually: research, write, code, illustrate. See the total credits and time before you spend anything. Share the plan with a link.', url: '/flow', body: `
+<div class="eyebrow">New · AI Flow Planner</div><h1>Design an AI pipeline. Price it first.</h1>
+<p class="sub">Chain AI steps into a flow, like research → write → illustrate, and see the total cost in credits and the expected time before anything runs. Nothing is charged here. Share the plan with a link, then run each step from your account.</p>
+<div class="flow-tpl" id="fl-tpl" aria-label="Templates"></div>
+<div class="flow-add" id="fl-add" aria-label="Add a step"></div>
+<div class="flow-canvas" id="fl-canvas"><svg id="fl-wires" aria-hidden="true"></svg><ol id="fl-nodes" class="flow-nodes"></ol></div>
+<div class="flow-sum" id="fl-sum" aria-live="polite"></div>
+<div class="ctas"><button class="btn ghost" id="fl-share">Copy share link</button><button class="btn ghost" id="fl-clear">Clear</button><a class="btn" href="/#account">Run steps from my account →</a></div>`, script: '<script src="/flow.js"></script>' }));
 };
