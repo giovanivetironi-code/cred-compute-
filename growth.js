@@ -81,7 +81,7 @@ module.exports = (app, ctx) => {
   app.get('/api/pulse', limit(60, 60_000), wrap(async (req, res) => { res.setHeader('Cache-Control', 'public, max-age=30'); res.json(await pulse()); }));
   app.get('/live', limit(60, 60_000), wrap(async (req, res) => html(res, { title: 'Live pulse', desc: 'Live, anonymous stats from ComputeCred: AI runs today, zeta zeros verified, duel votes and more.', url: '/live', body: `
 <div class="eyebrow">Live pulse</div><h1>What's happening on ComputeCred right now</h1>
-<p class="sub">Anonymous totals, updated every minute. No prompts, names or emails are ever shown here.</p>
+<p class="sub">Anonymous totals, streamed to your screen in real time. No prompts, names or emails are ever shown here.</p>
 <div class="holo"><canvas id="globe" width="640" height="640" role="img" aria-label="Rotating globe. Each AI run on ComputeCred sends a pulse across it. Drag to spin."></canvas><div class="holo-hud"><span class="livebadge" id="stream-st">● Connecting…</span><b id="g-runs">–</b><span>AI runs in the last 24 h</span><small class="mut">Drag to spin · pulses are illustrative, no locations are tracked</small></div></div>
 <div class="pulsegrid" id="pg" aria-live="polite"></div>
 <h2 class="h3">AI runs, last 24 hours</h2><div class="spark" id="spark" role="img" aria-label="Runs per hour over the last 24 hours"></div>
