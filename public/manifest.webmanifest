@@ -1,0 +1,3 @@
+{"name":"ComputeCred","short_name":"ComputeCred","description":"Prepaid credits for AI compute.","start_url":"/?source=pwa","scope":"/","display":"standalone","background_color":"#06142b","theme_color":"#06142b",
+ "icons":[{"src":"/images/icon-180.png","sizes":"180x180","type":"image/png"},{"src":"/images/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}],
+ "shortcuts":[{"name":"Prompt Sigil","url":"/sigil"},{"name":"Time Capsule","url":"/capsule"},{"name":"Compute Menu","url":"/menu"},{"name":"Live pulse","url":"/live"}]}

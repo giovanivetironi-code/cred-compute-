@@ -5,12 +5,12 @@
 <meta property="og:title" content="ComputeCred · Prepaid credits for AI compute"><meta property="og:description" content="Pay for AI chat, writing, research, coding, images and math with CRED. 1 CRED = $1 of compute.">
 <meta property="og:image" content="https://computecred.ai/images/og.png"><meta property="og:url" content="https://computecred.ai"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:site" content="@ComputeCred"><meta name="twitter:creator" content="@ComputeCred"><meta name="twitter:image" content="https://computecred.ai/images/og.png">
 <link rel="icon" href="/favicon.ico" sizes="32x32"><link rel="icon" type="image/png" href="/images/icon-32.png"><link rel="apple-touch-icon" href="/images/icon-180.png">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/style.css"><link rel="manifest" href="/manifest.webmanifest"><script>try{var t=localStorage.cc_theme;if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"ComputeCred","url":"https://computecred.ai","logo":"https://computecred.ai/images/icon-512.png","sameAs":["https://x.com/ComputeCred"],"contactPoint":{"@type":"ContactPoint","contactType":"customer support","email":"support@computecred.ai"}}</script></head><body>
 <div class="banner">Testnet preview · Base Sepolia · No real payments · CRED has no monetary value</div>
 <nav class="nav"><div class="wrap navin">
  <a href="#top" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a>
- <div class="links" id="links"><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="/duel">Duel</a><a href="/market">Market</a><a href="/lab">Math lab</a><a href="#faq">FAQ</a><a href="#account">Account</a></div>
+ <div class="links" id="links"><a href="#services">Services</a><a href="#pricing">Pricing</a><a href="/duel">Duel</a><a href="/market">Market</a><a href="/lab">Math lab</a><a href="/sigil">Sigil</a><a href="/capsule">Capsule</a><a href="/menu">Menu</a><a href="#faq">FAQ</a><a href="#account">Account</a></div>
  <button id="connect" class="btn">Connect wallet</button>
  <button class="burger" aria-label="Menu" onclick="document.getElementById('links').classList.toggle('open')">☰</button>
 </div></nav>
@@ -158,4 +158,4 @@ $('start').onclick = async () => {
   } catch (e) { msg(e.shortMessage || 'Transaction failed','err'); }
 };
 refresh().catch(()=>{}); setInterval(()=>refresh().catch(()=>{}), 5000);
-</script><script src="/ui.js"></script><script src="/gifts-ui.js"></script><script src="/account.js" defer></script></body></html>
+</script><script src="/ui.js"></script><script src="/gifts-ui.js"></script><script src="/account.js" defer></script><script src="/fx.js" defer></script></body></html>
