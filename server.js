@@ -16,6 +16,7 @@ const ABOUT = `You are the AI assistant on ComputeCred (https://computecred.ai).
 - Users sign in with a one-time email link (no password). Payments are processed by Stripe Checkout.
 - A related CRED token exists only as a testnet demo on Base Sepolia; it is non-transferable, trading is disabled, and it has no monetary value. Never describe credits or CRED as an investment, never promise returns or price gains.
 - Other features: every run gets a receipt (model, latency, tokens, cost) that the owner can share at computecred.ai/receipt/<id>; AI Duel (computecred.ai/duel) shows two models' answers side by side for a vote and a public leaderboard; credits are non-refundable once used (failed runs are refunded automatically); credits can be gifted to an email address (1-25 credits); a public math lab (computecred.ai/lab) shows verified zeta zeros computed by users; a prompt marketplace (computecred.ai/market) where creators add up to 0.5 credits markup and earn 70% of it as store credit. Credits are closed-loop store credit with no cash value; there are no cash payouts.
+- Growth features: new accounts get a one-time free welcome credit of 0.25 credits after verifying their email (limited per network, may run out on busy days). Referral program at computecred.ai/invite: when an invited friend buys their first credit pack, the friend gets 1 bonus credit and the inviter gets 2, up to 10 rewarded invites per account; no reward for sign-up alone, self-referrals or same-network referrals. Gifting credits unlocks after a first purchase. Live, anonymous site stats are at computecred.ai/live.
 - Official X account: @ComputeCred (https://x.com/ComputeCred). Support email: support@computecred.ai. Website: computecred.ai.
 If asked something about ComputeCred not covered here (e.g. company details, refunds specifics), say you are not sure and point to the Terms page, support@computecred.ai, or @ComputeCred. Otherwise just help with the user's request.`;
 // Prices in CRED (1 CRED = $1). Costs from docs.x.ai/developers/pricing (Oct 2026); see PLAN.md.
@@ -42,7 +43,9 @@ const pub = createPublicClient({ chain: baseSepolia, transport: http(RPC) });
 const wallet = createWalletClient({ account, chain: baseSepolia, transport: http(RPC) });
 
 const app = express(); app.use((req, res, next) => req.path === '/api/stripe/webhook' ? next() : express.json({ limit: '100kb' })(req, res, next)); app.set('trust proxy', true);
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(require('compression')());
+app.use((req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); res.setHeader('X-Frame-Options', 'SAMEORIGIN'); next(); });
+app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res, f) => { if (/\/images\/|favicon/.test(f)) res.setHeader('Cache-Control', 'public, max-age=604800'); else if (/\.(js|css)$/.test(f)) res.setHeader('Cache-Control', 'public, max-age=3600'); } }));
 // Basic per-IP rate limiting for the API.
 const hits = new Map();
 function limit(max, windowMs) { return (req, res, next) => { const k = req.path + '|' + req.ip, now = Date.now(); let h = hits.get(k);
@@ -172,7 +175,9 @@ app.get('/api/jobs', (req, res) => {
 });
 console.log('AI provider:', getProvider().name); // name only, never the key
 const acct = require('./accounts')(app, { RUNS, execute, db, limit });
-require('./features')(app, { ...acct, RUNS, execute, limit, getProvider, ABOUT });
+const feat = require('./features')(app, { ...acct, RUNS, execute, limit, getProvider, ABOUT });
+require('./growth')(app, { ...acct, ...feat, RUNS, limit });
+app.get('/token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'token.html')));
 app.use((req, res) => { if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' }); res.status(404).sendFile(path.join(__dirname, 'public', '404.html')); });
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () => console.log(`CRED demo on :${PORT} (minter ${account.address})`));

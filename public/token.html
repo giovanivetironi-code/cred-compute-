@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CRED token (testnet) · ComputeCred</title><meta name="description" content="CREDv2 test token on Base Sepolia. Testnet only, no real value."><meta name="theme-color" content="#06142b"><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/style.css"><meta name="twitter:site" content="@ComputeCred"><meta name="robots" content="noindex">
+<style>.tkbanner{background:#7a1d1d;color:#fff;padding:14px 18px;border-radius:10px;font-weight:700;margin:18px 0}.tkgrid{display:grid;grid-template-columns:max-content 1fr;gap:8px 18px;margin:18px 0}.tkgrid code{word-break:break-all}</style></head><body>
+<nav class="nav"><div class="wrap navin"><a href="/" class="brand"><img src="/images/icon-180.png" alt="">Compute<span>Cred</span></a><div class="links"></div><a href="/#account" class="btn">Get started</a></div></nav>
+<main class="wrap doc"><div class="eyebrow">Token · Testnet</div><h1>CRED token (v2)</h1>
+<div class="tkbanner" role="alert">Testnet only — no real value. Not an investment.</div>
+<p class="mut">CREDv2 is a test version of a tradable CRED token on the Base Sepolia test network. Test tokens can't be bought with real money and can't be exchanged for credits, cash or anything of value. There is no mainnet CRED token.</p>
+<div class="tkgrid">
+<b>Contract</b><code id="addr">0x055747c8AeDED8930f4b89C5B0644453f69e3867</code>
+<b>Chain</b><span>Base Sepolia testnet (chain ID 84532)</span>
+<b>Symbol</b><span>CRED · 18 decimals</span>
+<b>Total supply</b><span>23,000,000 CRED, fixed. No mint function exists after deployment.</span>
+<b>Admin powers</b><span>Pause/unpause transfers only (two-step ownership). No blacklist, no transfer fees.</span>
+<b>Explorer</b><a href="https://sepolia.basescan.org/token/0x055747c8AeDED8930f4b89C5B0644453f69e3867" target="_blank" rel="noopener noreferrer">View on Basescan (Sepolia)</a>
+<b>Source</b><a href="https://repo.sourcify.dev/84532/0x055747c8AeDED8930f4b89C5B0644453f69e3867" target="_blank" rel="noopener noreferrer">Verified source on Sourcify</a>
+<b>Test pool</b><a href="https://sepolia.basescan.org/address/0xb1abC68E84B9cE725ABBf18212c5D139d78Ab44B" target="_blank" rel="noopener noreferrer">Uniswap v3 CRED/WETH 0.3% (testnet)</a>
+</div>
+<p><button class="btn" id="add">Add CRED (testnet) to wallet</button> <span id="msg" class="mut"></span></p>
+</main>
+<footer class="foot minifoot"><div class="wrap legal mut"><a href="/">ComputeCred</a> · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a href="https://x.com/ComputeCred" target="_blank" rel="noopener noreferrer">@ComputeCred</a> · <a href="mailto:support@computecred.ai">support@computecred.ai</a><br>Testnet tokens have no value. Not an offer to sell any token or security.</div></footer>
+<script>
+document.getElementById('add').onclick=async()=>{const m=document.getElementById('msg');const e=window.ethereum;if(!e){m.textContent='No browser wallet found.';return}
+try{try{await e.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x14a34'}]})}catch(x){if(x.code===4902)await e.request({method:'wallet_addEthereumChain',params:[{chainId:'0x14a34',chainName:'Base Sepolia',nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18},rpcUrls:['https://sepolia.base.org'],blockExplorerUrls:['https://sepolia.basescan.org']}]});else throw x}
+const ok=await e.request({method:'wallet_watchAsset',params:{type:'ERC20',options:{address:'0x055747c8AeDED8930f4b89C5B0644453f69e3867',symbol:'CRED',decimals:18,image:location.origin+'/images/icon-180.png'}}});m.textContent=ok?'Added (testnet).':'Not added.'}catch(x){m.textContent='Wallet error: '+(x.message||x)}};
+</script></body></html>
