@@ -226,3 +226,4 @@ details p{color:var(--mut);margin:0 0 18px}
 /* Nav: the menu outgrew one row; tighten on wide screens, collapse to the burger below 1280px */
 @media (min-width:1281px){.navin{gap:16px}.links{gap:12px}.links a{font-size:13px;white-space:nowrap}}
 @media (max-width:1280px){.links{display:none;position:absolute;top:64px;left:0;right:0;flex-direction:column;gap:0;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 24px;max-height:calc(100vh - 64px);overflow:auto}.links.open{display:flex}.links a{padding:10px 0}.burger{display:block}.navin .btn{margin-left:auto}}
+[hidden]{display:none!important}
