@@ -46,3 +46,19 @@ module.exports.round4 = (app, ctx) => {
 <div class="ctas" style="justify-content:center"><button class="btn" id="sp-next" hidden>Next →</button><button class="btn ghost" id="sp-share" hidden>Copy my score</button><button class="btn ghost" id="sp-again" hidden>Play again</button></div></div>
 <p class="mut small">Questions are written by us and fact-checked, not generated live. The habit it trains is real: always check specific names, numbers and dates in AI answers.</p>`, script: '<script src="/spot.js"></script>' }));
 };
+// Round 5: Prompt Slot Machine (/dice) and AI Glossary flip cards (/glossary). Browser-only, no AI spend.
+module.exports.round5 = (app, ctx) => {
+  const { html, limit } = ctx;
+  app.get('/dice', limit(60, 60_000), (req, res) => html(res, { title: 'Prompt Slot Machine', desc: 'Stuck for an idea? Pull the lever: four reels spin up a who, a task, a twist and a format into a fresh creative prompt. Lock the reels you like.', url: '/dice', body: `
+<div class="eyebrow">New · Prompt Slot Machine</div><h1>Pull the lever, get a prompt.</h1>
+<p class="sub">Four reels: who is speaking, what they make, a twist and a format. Spin until something makes you smile. Tap a reel to lock it, then spin the rest. Press the space bar to spin.</p>
+<div class="card dc-card"><div class="dc-reels" id="dc-reels"></div>
+<p class="dc-out" id="dc-out" aria-live="polite"></p>
+<div class="ctas" style="justify-content:center"><button class="btn lg" id="dc-spin">🎰 Spin</button><button class="btn ghost" id="dc-copy">Copy prompt</button><a class="btn ghost" id="dc-sigil" href="/sigil">See its sigil</a><a class="btn ghost" href="/#account">Run it →</a></div>
+<p class="mut" id="dc-odds" style="text-align:center"></p></div>`, script: '<script src="/dice.js"></script>' }));
+  app.get('/glossary', limit(60, 60_000), (req, res) => html(res, { title: 'AI Words, Flipped', desc: 'The AI words everyone uses, explained in one sentence each. Flip the cards, search, or test yourself in quiz mode.', url: '/glossary', body: `
+<div class="eyebrow">New · AI Words, Flipped</div><h1>AI jargon, one card at a time.</h1>
+<p class="sub">Tokens, temperature, RAG, hallucination… Each card has the word on the front and a plain-English answer on the back. Tap to flip, search, or switch to quiz mode and see how many you know.</p>
+<div class="gl-bar"><input id="gl-q" type="search" placeholder="Search words…" aria-label="Search the glossary"><button class="btn ghost" id="gl-quiz">🧠 Quiz mode</button><button class="btn ghost" id="gl-all">Flip all</button><span id="gl-count" class="mut"></span></div>
+<div id="gl-grid" class="gl-grid"></div>`, script: '<script src="/glossary.js"></script>' }));
+};
