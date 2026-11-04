@@ -7,8 +7,8 @@
     const sc = SCALES[mood], root = 48 + hash(text) % 7, notes = [], words = [], toks = text.match(/[\w'’]+|[.,!?;:]/g) || []; let t = 0;
     for (const w of toks) { if (/^[.,;:]$/.test(w)) { t += w === '.' ? 1 : .5; continue; } if (/[!?]/.test(w)) { if (notes.length) notes.push({ m: notes[notes.length - 1].m + (w === '?' ? 5 : 12), t, d: 1, v: .5, wi: words.length - 1 }); t += 1; continue; }
       const h = hash(w.toLowerCase()), deg = h % (sc.length * 2), oct = Math.floor(deg / sc.length), m = root + 12 + oct * 12 + sc[deg % sc.length], d = w.length > 7 ? 1 : w.length > 3 ? .5 : .25;
-      words.push({ w, t }); notes.push({ m, t, d, v: .35 + (h >> 8) % 40 / 100, wi: words.length - 1 });
-      if (words.length % 4 === 1) notes.push({ m: root + sc[(h >> 4) % sc.length], t, d: 2, v: .25, bass: 1, wi: -1 }); t += d; }
+      words.push({ w, t }); notes.push({ m, t, d, v: .35 + (h >>> 8) % 40 / 100, wi: words.length - 1 });
+      if (words.length % 4 === 1) notes.push({ m: root + sc[(h >>> 4) % sc.length], t, d: 2, v: .25, bass: 1, wi: -1 }); t += d; }
     return { notes, words, mood, len: t + 2 }; }
   const hz = m => 440 * 2 ** ((m - 69) / 12);
   function voice(ac, out, n, at, beat, kind) { const o = ac.createOscillator(), e = ac.createGain(), f = hz(n.m), dur = n.d * beat;
