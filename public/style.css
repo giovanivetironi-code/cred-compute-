@@ -215,3 +215,11 @@ details p{color:var(--mut);margin:0 0 18px}
 .tl-track{height:14px;border-radius:7px;background:var(--bg2);overflow:hidden}.tl-track i{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));transition:width .35s cubic-bezier(.2,.8,.2,1)}
 .tl-row.cut{opacity:.35}.tl-row.hit span{color:var(--acc);font-weight:700}.tl-row.hit .tl-track{box-shadow:0 0 0 2px var(--acc)}.tl-race{display:grid;gap:10px;margin-top:12px}.tl-race b{font-size:18px!important}
 @media(max-width:560px){.tl-row{grid-template-columns:84px 1fr 54px}.tl-text{font-size:17px}}
+/* Token X-Ray + Spot */
+.xr-out{margin:14px 0;padding:14px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);line-height:2.1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;word-break:break-word;min-height:3em}
+.xr-t{padding:2px 1px;border-radius:4px;margin:0 1px;cursor:pointer;white-space:pre-wrap;outline:none;transition:transform .12s}.xr-t:hover,.xr-t:focus{transform:translateY(-2px);box-shadow:0 0 0 2px var(--acc)}.xr-t i{opacity:.35;font-style:normal}
+.xr-t.c0{background:rgba(20,212,212,.22)}.xr-t.c1{background:rgba(59,130,246,.26)}.xr-t.c2{background:rgba(52,211,153,.24)}.xr-t.c3{background:rgba(251,191,36,.26)}.xr-t.c4{background:rgba(248,113,113,.24)}.xr-t.c5{background:rgba(168,85,247,.26)}.xr-t.c6{background:rgba(236,72,153,.22)}.xr-t.c7{background:rgba(148,163,184,.26)}
+.xr-tip{text-align:center;min-height:1.6em}
+.sp-card{padding:20px}.sp-hud{display:flex;justify-content:space-between;font-weight:700;color:var(--acc);font-size:14px}.sp-q{font-size:19px;font-weight:600;margin:14px 0}
+.sp-ans{display:grid;gap:8px}.sp-s{text-align:left;font:inherit;font-size:15px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);color:var(--txt);cursor:pointer;transition:all .15s}.sp-s:hover:not(:disabled){border-color:var(--acc);transform:translateX(3px)}
+.sp-s.bad{border-color:var(--err);background:rgba(248,113,113,.14)}.sp-s.good{opacity:.6}.sp-s.picked{box-shadow:0 0 0 2px var(--acc);opacity:1}.sp-fb{margin-top:12px;min-height:1.6em}.sp-final{font-size:20px;color:var(--acc)}

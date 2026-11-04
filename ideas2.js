@@ -27,3 +27,22 @@ module.exports = (app, ctx) => {
 <div class="pulsegrid"><div class="pk"><b>0</b><span>Always the top word. Safe, repetitive. Good for facts and code.</span></div><div class="pk"><b>0.7–1</b><span>Balanced. Most chat answers live here.</span></div><div class="pk"><b>1.5+</b><span>Wild. Surprising, then nonsense. Fun for brainstorming.</span></div></div>
 <p class="mut small">The word probabilities are a hand-made demo, not a real model, but the math (softmax with temperature, then top-p) is exactly what real models use. <a href="/#account">Run a real model →</a></p>`, script: '<script src="/temperature.js"></script>' }));
 };
+// Round 4: Token X-Ray (/xray) and Spot the Hallucination (/spot). Browser-only, no AI spend.
+module.exports.round4 = (app, ctx) => {
+  const { html, limit } = ctx;
+  app.get('/xray', limit(60, 60_000), (req, res) => html(res, { title: 'Token X-Ray', desc: 'See your text the way an AI sees it: split into colored tokens, live. Find out why emoji, numbers and other languages cost more.', url: '/xray', body: `
+<div class="eyebrow">New · Token X-Ray</div><h1>See your words the way an AI does.</h1>
+<p class="sub">AI models don't read letters or words. They read "tokens": chunks of text. Type below and watch your text split into tokens in real time. Hover or tap a chunk to inspect it. It all runs in your browser.</p>
+<div class="card" style="padding:18px"><textarea id="xr-in" rows="4" maxlength="4000" style="width:100%" aria-label="Text to x-ray">Unbelievably, the 2026 robots learned to bake croissants 🥐 in Paris!</textarea>
+<div class="ctas" id="xr-ex"><button class="btn ghost" data-t="Hello world">Simple English</button><button class="btn ghost" data-t="3.14159265358979 × 1000000 = 3141592.65">Numbers</button><button class="btn ghost" data-t="🚀🔥😂🎉 vibes only ✨">Emoji</button><button class="btn ghost" data-t="مرحبا بالعالم · こんにちは世界 · Привет мир">Other languages</button><button class="btn ghost" data-t="const sum = (a, b) => a + b; // add them">Code</button></div>
+<div id="xr-out" class="xr-out" aria-live="polite"></div><p id="xr-tip" class="xr-tip mut">Tap a token to inspect it.</p>
+<div id="xr-stats" class="pulsegrid"></div></div>
+<p class="mut small">This is an approximate tokenizer that copies how real ones behave (common words stay whole, rare words split, emoji and non-Latin text break into many pieces). Exact splits differ from model to model.</p>`, script: '<script src="/xray.js"></script>' }));
+  app.get('/spot', limit(60, 60_000), (req, res) => html(res, { title: 'Spot the Hallucination', desc: 'AI sometimes states made-up facts with total confidence. Can you catch them? A fast, free game: tap the sentence that is false.', url: '/spot', body: `
+<div class="eyebrow">New · Spot the Hallucination</div><h1>Can you catch an AI making things up?</h1>
+<p class="sub">Each answer below sounds confident, but one sentence in it is false. Tap the sentence you think is invented. Ten rounds. Build a streak and share your score.</p>
+<div class="card sp-card"><div class="sp-hud"><span id="sp-round">Round 1/10</span><span id="sp-score">Score 0</span><span id="sp-streak">🔥 0</span></div>
+<p class="sp-q" id="sp-q"></p><div id="sp-ans" class="sp-ans"></div><p id="sp-fb" class="sp-fb" aria-live="polite"></p>
+<div class="ctas" style="justify-content:center"><button class="btn" id="sp-next" hidden>Next →</button><button class="btn ghost" id="sp-share" hidden>Copy my score</button><button class="btn ghost" id="sp-again" hidden>Play again</button></div></div>
+<p class="mut small">Questions are written by us and fact-checked, not generated live. The habit it trains is real: always check specific names, numbers and dates in AI answers.</p>`, script: '<script src="/spot.js"></script>' }));
+};
