@@ -21,6 +21,7 @@ const ABOUT = `You are the AI assistant on ComputeCred (https://computecred.ai).
 - Prompt Synth (computecred.ai/synth) turns any prompt into a short piece of music in the browser (mood picks the scale, words become notes, downloadable as .wav); Temperature Lab (computecred.ai/temperature) is a free simulator showing how temperature and top-p change which next word an AI picks, with a live sentence writer and a 3-temperature race. Both are free and use no credits.
 - Token X-Ray (computecred.ai/xray) shows text split into colored AI tokens live, with token counts and why emoji, numbers and other languages use more tokens (approximate tokenizer); Spot the Hallucination (computecred.ai/spot) is a free 10-round game where you tap the one false sentence in a confident-sounding answer, with streaks and a shareable score. Both run in the browser and use no credits.
 - Prompt Slot Machine (computecred.ai/dice) spins four lockable reels (who, task, subject, format) into a random creative prompt to copy or run; AI Words, Flipped (computecred.ai/glossary) is a set of flip cards explaining AI terms (token, temperature, RAG, embedding and more) in plain English, with search and a quiz mode. Both free, no credits.
+- Attention Playground (computecred.ai/attention) illustrates word connections with three hand-made heads, a causal mask and a clickable heatmap. Its weights are rule-based examples, NOT from a trained model and NOT an explanation of model decisions. Privacy Workbench (computecred.ai/redact) detects some common emails, phone numbers, IPv4 addresses, US SSN patterns, Luhn-valid card-like numbers and token-like secrets entirely in the browser; custom phrases and review checkboxes let users refine replacements before copying. Detection is best-effort, can miss sensitive data, and is NOT a guarantee of safe sharing. Both tools use no credits, upload no input and require no account.
 - Official X account: @ComputeCred (https://x.com/ComputeCred). Support email: support@computecred.ai. Website: computecred.ai.
 If asked something about ComputeCred not covered here (e.g. company details, refunds specifics), say you are not sure and point to the Terms page, support@computecred.ai, or @ComputeCred. Otherwise just help with the user's request.`;
 // Prices in CRED (1 CRED = $1). Costs from docs.x.ai/developers/pricing (Oct 2026); see PLAN.md.
@@ -185,6 +186,7 @@ require('./ideas')(app, { ...acct, ...feat, RUNS, limit });
 require('./ideas2')(app, { ...acct, ...feat, RUNS, limit });
 require('./ideas2').round4(app, { ...acct, ...feat, RUNS, limit });
 require('./ideas2').round5(app, { ...acct, ...feat, RUNS, limit });
+require('./creative-next')(app, { ...acct, ...feat, RUNS, limit });
 require('./tech')(app, { ...acct, ...feat, RUNS, limit, getProvider });
 app.get('/token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'token.html')));
 app.use((req, res) => { if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' }); res.status(404).sendFile(path.join(__dirname, 'public', '404.html')); });
